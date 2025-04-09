@@ -38,4 +38,4 @@ class User(Base):
     # 관계
     resumes = relationship("Resume", back_populates="user")
     applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
-    favorites = relationship("Favorite", back_populates="user")
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
