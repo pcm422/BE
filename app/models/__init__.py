@@ -6,3 +6,4 @@ from .resumes import Resume
 from .resumes_educations import ResumeEducation
 from .job_postings import JobPosting
 from .favorites import Favorite
+from .job_applications import JobApplication
