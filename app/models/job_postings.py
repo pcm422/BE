@@ -89,3 +89,4 @@ class JobPosting(Base):
     author = relationship("CompanyUser", back_populates="job_postings")
     company = relationship("CompanyInfo", back_populates="job_postings")
     favorites = relationship("Favorite", back_populates="job_posting", cascade="all, delete-orphan")
+    applications = relationship("JobApplication", back_populates="job_posting", cascade="all, delete-orphan")
