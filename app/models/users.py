@@ -36,6 +36,6 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)  # 수정일
 
     # 관계
-    resumes = relationship("Resume", back_populates="user")
+    resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
     applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
