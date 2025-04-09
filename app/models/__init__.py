@@ -4,3 +4,5 @@ from .company_users import CompanyUser
 from .company_info import CompanyInfo
 from .resumes import Resume
 from .resumes_educations import ResumeEducation
+from .job_postings import JobPosting
+from .favorites import Favorite
