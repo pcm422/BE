@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: my-fastapi-app-local
+    volumes:
+      - ./app:/app/app # app 디렉토리를 컨테이너 /app/app에 마운트 (코드 변경 반영)
+      - ./alembic:/app/alembic # alembic 설정/스크립트 마운트
+      - ./alembic.ini:/app/alembic.ini # alembic 설정 파일 마운트
+      - ./pyproject.toml:/app/pyproject.toml # pyproject.toml 변경 시 확인용
+      - ./poetry.lock:/app/poetry.lock # poetry.lock 변경 시 확인용
+    ports:
+      - "8000:8000" # 호스트 8000번 포트를 컨테이너 8000번 포트에 연결
+    environment:
+      - DATABASE_URL=${DATABASE_URL_LOCAL} # 호스트의 .env 파일에서 읽어옴
+      # 개발에 필요한 다른 환경 변수들 추가
+      - ENVIRONMENT=local
+    depends_on:
+      - db
+    # healthcheck 추가 고려 (DB 준비될 때까지 대기)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db:
+    image: postgres:15-alpine # 원하는 PostgreSQL 버전 사용
+    container_name: my-postgres-db-local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # 데이터 영구 저장을 위한 볼륨
+    ports:
+      - "5432:5432" # 호스트 5432 포트를 컨테이너 5432 포트에 연결 (DB 툴 연결용)
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data: # 명명된 볼륨 정의

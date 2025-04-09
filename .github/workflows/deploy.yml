@@ -1,0 +1,84 @@
+# 워크플로우 이름: NCP 서버 배포
+name: Deploy to NCP Server
+
+# 실행 트리거: 'main' 브랜치 푸시 시 실행
+on:
+  push:
+    branches:
+      - main # main 브랜치 대상
+
+# 작업 정의
+jobs:
+  # 첫 번째 작업(job): Docker 이미지 빌드 및 Docker Hub 푸시
+  build-and-push:
+    name: Build and Push Docker Image # 작업 이름
+    runs-on: ubuntu-latest # 실행 환경: Ubuntu 최신
+    steps:
+      # 1단계: 소스 코드 체크아웃
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2단계: Docker Buildx 설정 및 빌드 환경 준비
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3단계: Docker Hub 로그인 (Secrets 사용)
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }} # Docker Hub 사용자 이름 (Secrets 참조)
+          password: ${{ secrets.DOCKERHUB_TOKEN }}    # Docker Hub 토큰 (Secrets 참조)
+
+      # 4단계: Docker 이미지 빌드 및 푸시
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: . # 빌드 컨텍스트: 현재 디렉토리
+          file: Dockerfile # 사용할 Dockerfile 지정 (프로젝트 루트)
+          push: true # 푸시 여부: true (빌드 후 푸시)
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/myproject:latest # 이미지 태그: [사용자명]/[프로젝트명]:latest 형식
+
+  # 두 번째 작업(job): NCP 서버에 Docker 이미지 배포
+  deploy:
+    name: Deploy to NCP Server # 작업 이름
+    needs: build-and-push # 의존성: build-and-push 작업 성공 시 실행
+    runs-on: ubuntu-latest # 실행 환경: Ubuntu 최신
+    steps:
+      # 1단계: 소스 코드 체크아웃 (배포 스크립트 필요시)
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2단계: SSH로 NCP 서버 접속 및 배포 스크립트 실행
+      - name: Deploy to server and run migrations
+        uses: appleboy/ssh-action@master # 사용 액션: appleboy/ssh-action
+        with:
+          host: ${{ secrets.NCP_SERVER_HOST }}     # NCP 서버 호스트 (Secrets 참조)
+          username: ${{ secrets.NCP_SERVER_USER }} # NCP 서버 사용자 (Secrets 참조)
+          # key: ${{ secrets.NCP_SERVER_SSH_KEY }} # SSH 개인 키 (Secrets 참조, 사용 시 주석 해제)
+          password: ${{ secrets.NCP_SERVER_PASSWORD }} # NCP 서버 비밀번호 (Secrets 참조) - SSH 키 사용 권장
+          script: | # 실행 스크립트: NCP 서버에서 실행될 명령어 목록
+            # 프로젝트 디렉토리 이동
+            cd ${{ secrets.NCP_PROJECT_PATH }}
+
+            # 서버에서 Docker Hub 로그인 (이미지 pull 목적)
+            echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+
+            # (선택사항) 서버 소스 코드 업데이트 (git pull)
+            # git pull origin main
+
+            # Docker Compose로 최신 'app' 이미지 pull (프로덕션 설정 사용)
+            # ('app' 서비스는 FastAPI 앱으로 추정)
+            docker compose -f docker-compose.prod.yml pull app
+
+            # Docker Compose로 서비스 재시작 (app, nginx, certbot)
+            # '--force-recreate': 컨테이너 강제 재생성 옵션
+            docker compose -f docker-compose.prod.yml up -d --force-recreate app nginx certbot
+
+            # 데이터베이스 마이그레이션 실행 (Alembic, PostgreSQL 스키마 변경 적용)
+            # 'app' 컨테이너 내에서 마이그레이션 명령어 실행
+            docker compose -f docker-compose.prod.yml run --rm app poetry run alembic upgrade head
+
+            # (선택사항) 불필요한 Docker 리소스 정리 (공간 확보)
+            docker image prune -f
+            docker container prune -f
+            docker volume prune -f

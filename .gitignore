@@ -1,0 +1,28 @@
+# Environments
+.env*
+!.env.example
+
+# Poetry
+.venv/
+poetry.lock # 협업 시에는 포함하는 것이 좋으나, 환경 차이 문제가 발생하면 제외 고려
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Docker
+docker-compose.override.yml # 개인 로컬 설정용
+postgres_data/ # 로컬 DB 데이터 볼륨 (만약 로컬 경로에 생성된다면)
+
+# IDE
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
