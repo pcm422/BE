@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey
 from app.models.base import Base
 from datetime import datetime
+from sqlalchemy.orm import relationship
 
 # 기업 회원 계정 모델
 class CompanyUser(Base):
@@ -15,3 +16,5 @@ class CompanyUser(Base):
     manager_email = Column(String(100), nullable=True) # 담당자 이메일
     created_at = Column(DateTime, default=datetime.now) # 가입 날짜
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now) # 수정 날짜
+    
+    job_postings = relationship("JobPosting", back_populates="author")
