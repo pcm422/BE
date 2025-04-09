@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, Integer, Date, Text
 from app.models.base import Base
+from sqlalchemy.orm import relationship
 
 # 기업 정보 모델 (기업 마이페이지)
 
@@ -15,3 +16,4 @@ class CompanyInfo(Base):
     address = Column(String(100), nullable=True) # 사업장 주소 (선택)
     company_image = Column(String(255), nullable=True) # 회사 이미지 URL (선택)
 
+    job_postings = relationship("JobPosting", back_populates="company")
