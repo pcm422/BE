@@ -1,9 +1,10 @@
 from sqlalchemy import (
-    Column, Integer, String, Text, Date, DateTime, Boolean, ForeignKey, Enum
+    Column, Integer, String, Text, Date, DateTime, Boolean, ForeignKey, Enum as SQLAlchemyEnum
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.models.base import Base
+from enum import Enum
 
 class EducationEnum(str, Enum):
     none = "학력 무관"
@@ -60,7 +61,7 @@ class JobPosting(Base):
     recruit_period_end = Column(Date)
     is_always_recruiting = Column(Boolean, default=False)
 
-    education = Column(Enum(EducationEnum, name="education_enum"), nullable=False)
+    education = Column(SQLAlchemyEnum(EducationEnum, name="education_enum"), nullable=False)
     recruit_number = Column(Integer, nullable=False)
     benefits = Column(Text)
     preferred_conditions = Column(Text)
@@ -69,9 +70,9 @@ class JobPosting(Base):
     work_address = Column(String(255), nullable=False)
     work_place_name = Column(String(25), nullable=False)
 
-    payment_method = Column(Enum(PaymentMethodEnum, name="payment_method_enum"), nullable=False)
-    job_category = Column(Enum(JobCategoryEnum, name="job_category_enum"), nullable=False)
-    work_duration = Column(Enum(WorkDurationEnum, name="work_duration_enum"))
+    payment_method = Column(SQLAlchemyEnum(PaymentMethodEnum, name="payment_method_enum"), nullable=False)
+    job_category = Column(SQLAlchemyEnum(JobCategoryEnum, name="job_category_enum"), nullable=False)
+    work_duration = Column(SQLAlchemyEnum(WorkDurationEnum, name="work_duration_enum"))
     career = Column(String(50), nullable=False)
     employment_type = Column(String(50), nullable=False)
     salary = Column(Integer, nullable=False)
