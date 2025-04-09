@@ -82,8 +82,8 @@ class JobPosting(Base):
     description = Column(Text, nullable=False)
     posings_image = Column(String(255), nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.now)
+    updated_at = Column(DateTime(timezone=True), default=datetime.now, onupdate=datetime.now)
 
     # 관계 설정
     author = relationship("CompanyUser", back_populates="job_postings")
