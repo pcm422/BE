@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, Integer, Date, Text, ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey
 from app.models.base import Base
+from datetime import datetime
 
 # 기업 회원 계정 모델
 class CompanyUser(Base):
