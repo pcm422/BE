@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, status, BackgroundTasks, Depends, 
 from sqlalchemy.ext.asyncio import AsyncSession
 from itsdangerous import SignatureExpired, BadSignature
 from app.models.users import User
-from .email.mail_service import serializer, send_verification_email
+# from .email.mail_service import serializer, send_verification_email
 from sqlalchemy.future import select
 
 from .utiles import create_access_token, get_current_user, create_refresh_token, decode_jwt_token
@@ -32,47 +32,47 @@ async def register_user(
     return new_user  # 생성된 사용자 객체를 반환
 
 
-# 이메일 인증 재요청 API
-@router.post("/send-verify-email")
-async def request_verification_email(
-        user_id: int,  # 클라이언트로부터 전달받은 사용자 ID
-        to_email: str,  # 인증 메일을 받을 이메일 주소
-        background_tasks: BackgroundTasks  # 백그라운드 작업 처리용 객체
-):
-    """
-    이메일 인증 재요청 API.
-    제공된 사용자 ID와 이메일로 인증 이메일을 재발송.
-    """
-    await send_verification_email(background_tasks, user_id, to_email)  # 이메일 인증 메일 재발송
-    return {"message": "인증 이메일 발송 완료"}  # 성공 메시지 반환
+# # 이메일 인증 재요청 API
+# @router.post("/send-verify-email")
+# async def request_verification_email(
+#         user_id: int,  # 클라이언트로부터 전달받은 사용자 ID
+#         to_email: str,  # 인증 메일을 받을 이메일 주소
+#         background_tasks: BackgroundTasks  # 백그라운드 작업 처리용 객체
+# ):
+#     """
+#     이메일 인증 재요청 API.
+#     제공된 사용자 ID와 이메일로 인증 이메일을 재발송.
+#     """
+#     await send_verification_email(background_tasks, user_id, to_email)  # 이메일 인증 메일 재발송
+#     return {"message": "인증 이메일 발송 완료"}  # 성공 메시지 반환
 
 
-# 이메일 인증 링크를 통한 사용자 인증 API
-@router.get("/verify-email")
-async def verify_email(
-        token: str = Query(...),  # 쿼리 파라미터로 전달받은 토큰(필수)
-        db: AsyncSession = Depends(get_db_session)  # DB 세션 의존성 주입
-):
-    """
-    이메일 인증 API.
-    토큰을 검증하여 해당 사용자의 이메일 인증을 완료.
-    """
-    try:
-        user_id = serializer.loads(token, max_age=3600)  # 토큰에서 user_id 추출 (1시간 만료)
-        query = select(User).filter(User.id == user_id)  # user_id로 사용자 조회
-        result = await db.execute(query)  # 쿼리 실행
-        user_obj = result.scalar_one_or_none()  # 단일 사용자 객체 반환 (없으면 None)
-        if not user_obj:  # 사용자 객체가 없으면
-            raise HTTPException(status_code=404, detail="User not found.")  # 404 에러 발생
-        user_obj.is_active = True  # 이메일 인증 완료 설정 (is_active를 True로 변경)
-        db.add(user_obj)  # 변경된 사용자 객체를 DB 세션에 추가
-        await db.commit()  # DB에 변경 사항 커밋
-        await db.refresh(user_obj)  # 최신 상태의 사용자 객체로 갱신
-        return {"message": "이메일 인증 완료"}  # 성공 메시지 반환
-    except SignatureExpired:  # 토큰이 만료된 경우
-        raise HTTPException(status_code=400, detail="토큰이 만료되었습니다.")  # 400 에러 발생
-    except BadSignature:  # 토큰 서명이 올바르지 않을 경우
-        raise HTTPException(status_code=400, detail="잘못된 토큰입니다.")  # 400 에러 발생
+# # 이메일 인증 링크를 통한 사용자 인증 API
+# @router.get("/verify-email")
+# async def verify_email(
+#         token: str = Query(...),  # 쿼리 파라미터로 전달받은 토큰(필수)
+#         db: AsyncSession = Depends(get_db_session)  # DB 세션 의존성 주입
+# ):
+#     """
+#     이메일 인증 API.
+#     토큰을 검증하여 해당 사용자의 이메일 인증을 완료.
+#     """
+#     try:
+#         user_id = serializer.loads(token, max_age=3600)  # 토큰에서 user_id 추출 (1시간 만료)
+#         query = select(User).filter(User.id == user_id)  # user_id로 사용자 조회
+#         result = await db.execute(query)  # 쿼리 실행
+#         user_obj = result.scalar_one_or_none()  # 단일 사용자 객체 반환 (없으면 None)
+#         if not user_obj:  # 사용자 객체가 없으면
+#             raise HTTPException(status_code=404, detail="User not found.")  # 404 에러 발생
+#         user_obj.is_active = True  # 이메일 인증 완료 설정 (is_active를 True로 변경)
+#         db.add(user_obj)  # 변경된 사용자 객체를 DB 세션에 추가
+#         await db.commit()  # DB에 변경 사항 커밋
+#         await db.refresh(user_obj)  # 최신 상태의 사용자 객체로 갱신
+#         return {"message": "이메일 인증 완료"}  # 성공 메시지 반환
+#     except SignatureExpired:  # 토큰이 만료된 경우
+#         raise HTTPException(status_code=400, detail="토큰이 만료되었습니다.")  # 400 에러 발생
+#     except BadSignature:  # 토큰 서명이 올바르지 않을 경우
+#         raise HTTPException(status_code=400, detail="잘못된 토큰입니다.")  # 400 에러 발생
 
 
 # 사용자 로그인 API
