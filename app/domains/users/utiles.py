@@ -20,13 +20,13 @@ http_bearer = HTTPBearer()
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()   # 데이터 카피
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)  # 현재 시간 + 만료시간 계산
+    expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)  # 현재 시간 + 만료시간 계산
     to_encode.update({"exp": expire, "token_type": "access"})  # 토큰 타입 추가
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)  # 생성 후 반환
 
 def create_refresh_token(data: dict) -> str:
     to_encode = data.copy()   # 데이터 카피
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)  # 현재 시간 + 만료일 계산
+    expire = datetime.now() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)  # 현재 시간 + 만료일 계산
     to_encode.update({"exp": expire, "token_type": "refresh"})  # 토큰 타입 추가
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)  # 생성 후 반환
 
