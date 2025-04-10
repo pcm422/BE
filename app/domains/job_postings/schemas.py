@@ -42,3 +42,26 @@ class JobPostingResponse(JobPostingCreate):
 
     class Config:
         orm_mode = True
+        
+class JobPostingUpdate(BaseModel):
+    title: Optional[str]
+    recruit_period_start: Optional[date]
+    recruit_period_end: Optional[date]
+    is_always_recruiting: Optional[bool]
+    education: Optional[EducationEnum]
+    recruit_number: Optional[int]
+    benefits: Optional[str]
+    preferred_conditions: Optional[str]
+    other_conditions: Optional[str]
+    work_address: Optional[str]
+    work_place_name: Optional[str]
+    payment_method: Optional[PaymentMethodEnum]
+    job_category: Optional[JobCategoryEnum]
+    work_duration: Optional[WorkDurationEnum]
+    career: Optional[str]
+    employment_type: Optional[str]
+    salary: Optional[int]
+    deadline_at: Optional[date]
+    work_days: Optional[str]
+    description: Optional[str]
+    posings_image: Optional[str]
