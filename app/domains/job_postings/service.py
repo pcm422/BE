@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.job_postings import JobPosting
-from app.domains.job_postings.schemas import JobPostingCreate
+from app.domains.job_postings.schemas import JobPostingCreate, JobPostingUpdate
 
 async def create_job_posting(
     session: AsyncSession,
@@ -28,3 +28,21 @@ async def get_job_posting(session: AsyncSession, job_posting_id: int) -> JobPost
         select(JobPosting).where(JobPosting.id == job_posting_id)
     )
     return result.scalars().first()
+
+async def update_job_posting(
+    session: AsyncSession,
+    job_posting_id: int,
+    data: JobPostingUpdate
+) -> JobPosting | None:
+    result = await session.execute(select(JobPosting).where(JobPosting.id == job_posting_id))
+    job_posting = result.scalars().first()
+    if not job_posting:
+        return None
+
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(job_posting, key, value)
+
+    await session.commit()
+    await session.refresh(job_posting)
+    return job_posting
