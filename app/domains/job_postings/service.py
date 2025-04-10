@@ -46,3 +46,16 @@ async def update_job_posting(
     await session.commit()
     await session.refresh(job_posting)
     return job_posting
+
+async def delete_job_posting(
+    session: AsyncSession,
+    job_posting_id: int
+) -> bool:
+    result = await session.execute(select(JobPosting).where(JobPosting.id == job_posting_id))
+    job_posting = result.scalars().first()
+    if not job_posting:
+        return False
+
+    await session.delete(job_posting)
+    await session.commit()
+    return True
