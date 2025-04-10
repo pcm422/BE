@@ -11,13 +11,7 @@ from app.models.company_users import CompanyUser
 
 router = APIRouter(prefix="/posting", tags=["채용공고"])
 
-@router.post(
-    "/",
-    response_model=JobPostingResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="채용공고 생성",
-    description="로그인된 기업 담당자가 새로운 채용공고를 등록합니다."
-)
+@router.post("/", response_model=JobPostingResponse, status_code=status.HTTP_201_CREATED, summary="채용공고 생성", description="로그인된 기업 담당자가 새로운 채용공고를 등록합니다.")
 async def create_job_posting(
     data: JobPostingCreate,
     session: AsyncSession = Depends(get_db_session),
@@ -58,3 +52,18 @@ async def update_posting(
         raise HTTPException(status_code=403, detail="본인 공고만 수정할 수 있습니다.")
 
     return await service.update_job_posting(session, job_posting_id, data)
+
+@router.delete("/{job_posting_id}", status_code=status.HTTP_204_NO_CONTENT, summary="채용공고 삭제", description="로그인된 기업 담당자가 자신이 올린 채용공고를 삭제합니다.")
+async def delete_posting(
+    job_posting_id: int,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: CompanyUser = Depends(get_current_company_user)
+):
+    posting = await service.get_job_posting(session, job_posting_id)
+    if not posting:
+        raise HTTPException(status_code=404, detail="삭제할 채용공고가 없습니다.")
+    if posting.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="본인 공고만 삭제할 수 있습니다.")
+
+    await service.delete_job_posting(session, job_posting_id)
+    return None
