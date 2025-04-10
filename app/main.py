@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.domains.users.router import router as users_router
+from app.domains.job_postings.router import router as job_postings_router
 from app.core.config import ENVIRONMENT
 from fastapi import FastAPI, Security
 from fastapi.openapi.utils import get_openapi
@@ -42,3 +43,4 @@ async def root():
 # prefix: 해당 라우터의 모든 경로 앞에 "/api/users" 추가
 # tags: API 문서에서 해당 라우터의 경로들을 "users" 그룹으로 묶음
 app.include_router(users_router)
+app.include_router(job_postings_router)
