@@ -8,3 +8,5 @@ from .job_postings import JobPosting
 from .favorites import Favorite
 from .job_applications import JobApplication
 from .admin_users import AdminUser
+from .interests import Interest
+from .users_interests import UserInterest
