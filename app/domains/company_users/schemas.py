@@ -17,4 +17,4 @@ class CompanyUserRequest(BaseModel):
     # 담당자
     manager_name: str   # 담당자 이름
     manager_phone: str  # 담당자 전화 번호
-    manger_email: EmailStr  # 담당자 이메일
+    manager_email: EmailStr  # 담당자 이메일
