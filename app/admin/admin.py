@@ -3,6 +3,7 @@ from sqladmin import Admin, ModelView
 from app.core.db import engine
 from app.models.company_info import CompanyInfo
 from app.models.company_users import CompanyUser
+from app.models.interests import Interest
 from app.models.job_applications import JobApplication
 from app.models.resumes import Resume
 from app.models.resumes_educations import ResumeEducation
@@ -12,6 +13,7 @@ from app.models.favorites import Favorite
 from app.models.admin_users import AdminUser
 from app.admin.auth import AdminAuth
 from app.core.config import SECRET_KEY
+from app.models.users_interests import UserInterest
 
 class UserAdmin(ModelView, model=User):
     column_list = User.__table__.columns.keys()
@@ -26,7 +28,6 @@ class UserAdmin(ModelView, model=User):
         "phone_number": "전화번호",
         "birthday": "생년월일",
         "gender": "성별",
-        "interests": "관심분야",
         "signup_purpose": "가입 목적",
         "referral_source": "유입경로",
         "is_active": "이메일 활성상태",
@@ -138,12 +139,79 @@ class jobApplicationAdmin(ModelView, model=JobApplication):
     column_list = JobApplication.__table__.columns.keys()
     name = "지원 내역"
     name_plural = "지원 내역 목록"
+    column_labels = {
+        "id": "번호",
+        "user_id": "회원",
+        "job_posting_id": "공고",
+        "status": "상태",
+        "created_at": "작성일",
+        "updated_at": "수정일",
+        "user": "회원",
+        "job_posting": "공고"
+    }
     
 class ResumeAdmin(ModelView, model=Resume):
     column_list = Resume.__table__.columns.keys()
+    name = "이력서"
+    name_plural = "이력서 목록"
+    column_labels = {
+        "id": "번호",
+        "user_id": "회원",
+        "resume_image": "이미지",
+        "company_name": "이전회사명",
+        "position": "직급/직무",
+        "work_period_start": "근무 시작일",
+        "work_period_end": "근무 종료일",
+        "desired_area": "희망 지역",
+        "introduction": "자기소개",
+        "created_at": "작성일",
+        "updated_at": "수정일",
+        "user": "회원",
+        "educations": "학력"
+    }
     
 class ResumeEducationAdmin(ModelView, model=ResumeEducation):
     column_list = ResumeEducation.__table__.columns.keys()
+    name = "학력"
+    name_plural = "학력 목록"
+    column_labels = {
+        "id": "번호",
+        "resumes_id": "이력서",
+        "education_type": "학력구분",
+        "school_name": "학교명",
+        "education_status": "학력상태",
+        "major": "전공",
+        "degree": "학위",
+        "start_date": "시작일",
+        "end_date": "종료일",
+        "resume": "이력서",
+        "created_at": "작성일",
+        "updated_at": "수정일"
+    }
+    
+class InterestAdmin(ModelView, model=Interest):
+    column_list = Interest.__table__.columns.keys()
+    name = "관심분야"
+    name_plural = "관심분야 목록"
+    column_labels = {
+        "id": "번호",
+        "code": "코드",
+        "name": "이름",
+        "is_custom": "사용자 정의 항목 여부",
+        "user_interests": "회원 관심분야"
+    }
+    
+class UserInterestAdmin(ModelView, model=UserInterest):
+    column_list = UserInterest.__table__.columns.keys()
+    name = "회원 관심분야"
+    name_plural = "회원 관심분야 목록"
+    column_labels = {
+        "id": "번호",
+        "user_id": "회원",
+        "interest_id": "관심분야",
+        "user": "회원",
+        "interest": "관심분야"
+    }
     
 
 def setup_admin(app: FastAPI):
@@ -155,6 +223,8 @@ def setup_admin(app: FastAPI):
     )
     admin.add_view(AdminUserAdmin)
     admin.add_view(UserAdmin)
+    admin.add_view(UserInterestAdmin)
+    admin.add_view(InterestAdmin)
     admin.add_view(JobPostingAdmin)
     admin.add_view(FavoriteAdmin)
     admin.add_view(CompanyInfoAdmin)
