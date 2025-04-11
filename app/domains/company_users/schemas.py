@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from datetime import datetime
+from datetime import date
 from typing import Optional
 
 # 기업 회원 가입 - 요청 바디용
