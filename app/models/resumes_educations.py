@@ -41,3 +41,6 @@ class ResumeEducation(Base):
 
     # 관계
     resume = relationship("Resume", back_populates="educations")
+    
+    def __str__(self):
+        return f"{self.school_name} - {self.education_type}"

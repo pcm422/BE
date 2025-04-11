@@ -11,3 +11,6 @@ class Interest(Base):
     is_custom = Column(Boolean, default=False)              # 사용자 정의 항목 여부
 
     user_interests = relationship("UserInterest", back_populates="interest", cascade="all, delete-orphan")
+
+    def __str__(self):
+        return self.name

@@ -14,3 +14,6 @@ class Favorite(Base):
     # 관계
     user = relationship("User", back_populates="favorites")
     job_posting = relationship("JobPosting", back_populates="favorites")
+    
+    def __str__(self):
+        return f"{self.user.name} - {self.job_posting.title}"

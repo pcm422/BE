@@ -167,6 +167,22 @@ class CompanyUserAdmin(ModelView, model=CompanyUser):
         "job_postings": "작성한 공고"
     }
     
+    async def is_accessible(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_create_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_update_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_delete_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+    
 class jobApplicationAdmin(ModelView, model=JobApplication):
     column_list = JobApplication.__table__.columns.keys()
     name = "지원 내역"

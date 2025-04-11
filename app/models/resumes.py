@@ -33,4 +33,5 @@ class Resume(Base):
     user = relationship("User", back_populates="resumes")
     educations = relationship("ResumeEducation", back_populates="resume")
 
-
+    def __str__(self):
+        return f"{self.user.name} - {self.company_name or '이전 회사 없음'} ({self.position or '직무 없음'})"
