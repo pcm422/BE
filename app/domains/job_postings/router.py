@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from fastapi.exceptions import HTTPException
 
-from app.core.auth import get_current_company_user
+from app.core.utils import get_current_company_user
 from app.core.db import get_db_session
 from app.domains.job_postings import service
 from app.domains.job_postings.schemas import JobPostingCreate, JobPostingResponse, JobPostingUpdate

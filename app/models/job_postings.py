@@ -90,3 +90,6 @@ class JobPosting(Base):
     company = relationship("CompanyInfo", back_populates="job_postings")
     favorites = relationship("Favorite", back_populates="job_posting", cascade="all, delete-orphan")
     applications = relationship("JobApplication", back_populates="job_posting", cascade="all, delete-orphan")
+    
+    def __str__(self):
+        return self.title

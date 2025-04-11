@@ -18,3 +18,7 @@ class CompanyUser(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now) # 수정 날짜
     
     job_postings = relationship("JobPosting", back_populates="author")
+    company = relationship("CompanyInfo", back_populates="company_users")
+    
+    def __str__(self):
+        return self.email

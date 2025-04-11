@@ -5,9 +5,12 @@ from app.core.config import ENVIRONMENT
 from fastapi import FastAPI, Security
 from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.admin.admin import setup_admin
 
 # FastAPI 애플리케이션 인스턴스 생성 (프로젝트 제목 및 버전 설정)
 app = FastAPI(title="My FastAPI Project", version="0.1.0")
+
+setup_admin(app)
 
 bearer_scheme = HTTPBearer()
 
