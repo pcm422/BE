@@ -37,6 +37,22 @@ class UserAdmin(ModelView, model=User):
         "applications": "지원 내역",
         "favorites": "즐겨찾기"
     }
+    
+    async def is_accessible(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_create_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_update_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_delete_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
 
 class JobPostingAdmin(ModelView, model=JobPosting):
     column_list = JobPosting.__table__.columns.keys()
@@ -99,6 +115,22 @@ class AdminUserAdmin(ModelView, model=AdminUser):
         "username": "아이디",
         "password": "비밀번호"
     }
+    
+    async def is_accessible(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_create_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_update_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_delete_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
     
 class CompanyInfoAdmin(ModelView, model=CompanyInfo):
     column_list = CompanyInfo.__table__.columns.keys()
