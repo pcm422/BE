@@ -17,3 +17,7 @@ class CompanyInfo(Base):
     company_image = Column(String(255), nullable=True) # 회사 이미지 URL (선택)
 
     job_postings = relationship("JobPosting", back_populates="company")
+    company_users = relationship("CompanyUser", back_populates="company")
+    
+    def __str__(self):
+        return self.company_name

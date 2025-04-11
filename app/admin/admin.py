@@ -15,24 +15,129 @@ from app.core.config import SECRET_KEY
 
 class UserAdmin(ModelView, model=User):
     column_list = User.__table__.columns.keys()
+    name = "회원"
+    name_plural = "회원 목록"
+    column_labels = {
+        "id": "번호",
+        "name": "이름",
+        "email": "이메일",
+        "user_image": "이미지",
+        "password": "비밀번호",
+        "phone_number": "전화번호",
+        "birthday": "생년월일",
+        "gender": "성별",
+        "interests": "관심분야",
+        "signup_purpose": "가입 목적",
+        "referral_source": "유입경로",
+        "is_active": "이메일 활성상태",
+        "created_at": "가입일",
+        "updated_at": "수정일",
+        "resumes": "이력서",
+        "applications": "지원 내역",
+        "favorites": "즐겨찾기"
+    }
 
 class JobPostingAdmin(ModelView, model=JobPosting):
     column_list = JobPosting.__table__.columns.keys()
+    name = "공고"
+    name_plural = "공고 목록"
+    column_labels = {
+        "id": "번호",
+        "title": "제목",
+        "author_id": "담당자",
+        "company_id": "회사",
+        "recruit_period_start": "모집 시작일",
+        "recruit_period_end": "모집 종료일",
+        "is_always_recruiting": "상시 모집 여부",
+        "education": "요구 학력",
+        "recruit_number": "모집 인원",
+        "benefits": "복리 후생",
+        "preferred_conditions": "우대 조건",
+        "other_conditions": "기타 조건",
+        "work_address": "근무지",
+        "work_place_name": "근무지명",
+        "payment_method": "급여 지급 방법",
+        "job_category": "직종",
+        "work_duration": "근무 기간",
+        "career": "경력",
+        "employment_type": "고용형태",
+        "salary": "급여",
+        "deadline_at": "마감일",
+        "work_days": "근무요일/스케줄",
+        "description": "공고상세내용",
+        "posings_image": "공고이미지",
+        "created_at": "작성일",
+        "updated_at": "수정일",
+        "author": "작성자",
+        "company": "회사",
+        "favorites": "즐겨찾기",
+        "applications": "지원 내역"
+    }
+    
 
 class FavoriteAdmin(ModelView, model=Favorite):
     column_list = Favorite.__table__.columns.keys()
+    name = "즐겨찾기"
+    name_plural = "즐겨찾기 목록"
+    column_labels = {
+        "id": "번호",
+        "user_id": "회원",
+        "job_posting_id": "공고",
+        "created_at": "작성일",
+        "user": "회원",
+        "job_posting": "공고"
+    }
+    
 
 class AdminUserAdmin(ModelView, model=AdminUser):
     column_list = AdminUser.__table__.columns.keys()
+    name = "관리자"
+    name_plural = "관리자 목록"
+    column_labels = {
+        "id": "번호",
+        "username": "아이디",
+        "password": "비밀번호"
+    }
     
 class CompanyInfoAdmin(ModelView, model=CompanyInfo):
     column_list = CompanyInfo.__table__.columns.keys()
+    name = "기업 정보"
+    name_plural = "기업 정보 목록"
+    column_labels = {
+        "id": "번호",
+        "company_name": "기업명",
+        "business_reg_number": "사업자등록번호",
+        "opening_date": "개업일",
+        "company_intro": "기업 소개",
+        "ceo_name": "대표자 성함",
+        "address": "사업장 주소",
+        "company_image": "회사 이미지 URL",
+        "job_postings": "작성한 공고",
+        "company_users": "담당자"
+    }
     
 class CompanyUserAdmin(ModelView, model=CompanyUser):
     column_list = CompanyUser.__table__.columns.keys()
+    name = "기업 담당자"
+    name_plural = "기업 담당자 목록"
+    column_labels = {
+        "id": "번호",
+        "company_id": "기업 번호",
+        "password": "비밀번호",
+        "manager_name": "담당자 이름",
+        "manager_phone": "담당자 전화번호",
+        "manager_email": "담당자 이메일",
+        "created_at": "가입일",
+        "updated_at": "수정일",
+        "email": "로그인 이메일",
+        "company": "소속 회사",
+        "job_postings": "작성한 공고"
+    }
     
 class jobApplicationAdmin(ModelView, model=JobApplication):
     column_list = JobApplication.__table__.columns.keys()
+    name = "지원 내역"
+    name_plural = "지원 내역 목록"
     
 class ResumeAdmin(ModelView, model=Resume):
     column_list = Resume.__table__.columns.keys()
@@ -51,7 +156,7 @@ def setup_admin(app: FastAPI):
     admin.add_view(AdminUserAdmin)
     admin.add_view(UserAdmin)
     admin.add_view(JobPostingAdmin)
-    admin.add_view(FavoriteAdmin)    
+    admin.add_view(FavoriteAdmin)
     admin.add_view(CompanyInfoAdmin)
     admin.add_view(CompanyUserAdmin)
     admin.add_view(jobApplicationAdmin)
