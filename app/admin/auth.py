@@ -1,9 +1,11 @@
 from sqladmin.authentication import AuthenticationBackend
-from starlette.requests import Request
-from app.core.db import AsyncSessionFactory
 from sqlalchemy.future import select
-from app.models.admin_users import AdminUser
+from starlette.requests import Request
+
+from app.core.db import AsyncSessionFactory
 from app.core.utils import verify_password
+from app.models.admin_users import AdminUser
+
 
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
@@ -12,7 +14,9 @@ class AdminAuth(AuthenticationBackend):
         password = form.get("password")
 
         async with AsyncSessionFactory() as session:
-            result = await session.execute(select(AdminUser).where(AdminUser.username == username))
+            result = await session.execute(
+                select(AdminUser).where(AdminUser.username == username)
+            )
             user = result.scalar_one_or_none()
 
             if user and verify_password(password, user.password):

@@ -1,18 +1,11 @@
 from datetime import datetime
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Date,
-    DateTime,
-    Text,
-    Enum as SQLEnum,
-    ForeignKey
-)
+from sqlalchemy import Column, Date, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
-from app.models import Base
 
+from app.models import Base
 
 
 class Resume(Base):
@@ -24,7 +17,7 @@ class Resume(Base):
     position = Column(String(255), nullable=True)  # 직급/직무
     work_period_start = Column(Date, nullable=True)  # 근무 시작일
     work_period_end = Column(Date, nullable=True)  # 근무 종료일 (재직 중일시 Null)
-    desired_area = Column(String(255), nullable=True) # 희망 지역
+    desired_area = Column(String(255), nullable=True)  # 희망 지역
     introduction = Column(Text, nullable=True)  # 자기소개
     created_at = Column(DateTime, default=datetime.now)  # 생성일
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)  # 수정일
@@ -32,5 +25,3 @@ class Resume(Base):
     # 관계
     user = relationship("User", back_populates="resumes")
     educations = relationship("ResumeEducation", back_populates="resume")
-
-
