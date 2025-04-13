@@ -42,3 +42,12 @@ def check_business_number_valid(b_no : str,start_dt:str,p_nm:str)->bool:
         # 01: 계속사업자,
         # 02: 휴업자,
         # 03: 폐업자
+
+# 비밀번호 해싱 (DB 저장시)
+def hash_password(password: str) -> str:
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return hashed.decode("utf-8")
+
+# 비밀번호 검증 (로그인시)
+def verify_password(password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(password.encode("utf-8"), hashed_password)
