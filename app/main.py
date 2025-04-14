@@ -8,7 +8,7 @@ from app.domains.favorites.router import router as favorites_router
 from app.domains.job_postings.router import router as job_postings_router
 from app.domains.users.oauth.social_router import router as social_router
 from app.domains.users.router import router as users_router
-
+from app.domains.company_users.router import router as company_users_router
 # FastAPI 애플리케이션 인스턴스 생성 (프로젝트 제목 및 버전 설정)
 app = FastAPI(title="My FastAPI Project", version="0.1.0")
 
@@ -53,3 +53,5 @@ app.include_router(users_router)
 app.include_router(job_postings_router)
 app.include_router(favorites_router)
 app.include_router(social_router)
+
+app.include_router(company_users_router)
