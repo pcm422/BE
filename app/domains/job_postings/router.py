@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,7 +9,8 @@ from app.core.utils import get_current_company_user
 from app.domains.job_postings import service
 from app.domains.job_postings.schemas import (JobPostingCreate,
                                               JobPostingResponse,
-                                              JobPostingUpdate)
+                                              JobPostingUpdate,
+                                              PaginatedJobPostingResponse)
 from app.models.company_users import CompanyUser
 
 router = APIRouter(prefix="/posting", tags=["채용공고"])
@@ -37,12 +38,28 @@ async def create_job_posting(
 
 @router.get(
     "/",
-    response_model=List[JobPostingResponse],
-    summary="채용공고 전체 목록 조회",
-    description="모든 채용공고를 조회합니다.",
+    response_model=PaginatedJobPostingResponse,
+    summary="채용공고 목록 조회",
+    description="채용공고 목록을 페이지네이션하여 조회합니다.",
 )
-async def list_postings(session: AsyncSession = Depends(get_db_session)):
-    return await service.list_job_postings(session)
+async def list_postings(
+    skip: int = Query(0, ge=0, description="건너뛸 레코드 수"),
+    limit: int = Query(10, ge=1, le=100, description="가져올 레코드 수"),
+    session: AsyncSession = Depends(get_db_session)
+):
+    postings, total_count = await service.list_job_postings(
+        session=session, skip=skip, limit=limit
+    )
+    
+    # SQLAlchemy 모델을 Pydantic 모델로 변환 (Pydantic v2)
+    posting_responses = [JobPostingResponse.model_validate(posting) for posting in postings]
+    
+    return {
+        "items": posting_responses,
+        "total": total_count,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.get(

@@ -1,22 +1,43 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.job_postings import (EducationEnum, JobCategoryEnum,
                                      PaymentMethodEnum, WorkDurationEnum)
 
 
-class JobPostingCreate(BaseModel):
+class JobPostingBase(BaseModel):
+    title: Optional[str] = None
+    recruit_period_start: Optional[date] = None
+    recruit_period_end: Optional[date] = None
+    is_always_recruiting: Optional[bool] = None
+    education: Optional[EducationEnum] = None
+    recruit_number: Optional[int] = None
+    benefits: Optional[str] = None
+    preferred_conditions: Optional[str] = None
+    other_conditions: Optional[str] = None
+    work_address: Optional[str] = None
+    work_place_name: Optional[str] = None
+    payment_method: Optional[PaymentMethodEnum] = None
+    job_category: Optional[JobCategoryEnum] = None
+    work_duration: Optional[WorkDurationEnum] = None
+    career: Optional[str] = None
+    employment_type: Optional[str] = None
+    salary: Optional[int] = None
+    deadline_at: Optional[date] = None
+    work_days: Optional[str] = None
+    description: Optional[str] = None
+    posings_image: Optional[str] = None
+
+
+class JobPostingCreate(JobPostingBase):
     title: str
     recruit_period_start: date
     recruit_period_end: date
     is_always_recruiting: bool
     education: EducationEnum
     recruit_number: int
-    benefits: Optional[str]
-    preferred_conditions: Optional[str]
-    other_conditions: Optional[str]
     work_address: str
     work_place_name: str
     payment_method: PaymentMethodEnum
@@ -31,7 +52,7 @@ class JobPostingCreate(BaseModel):
     posings_image: str
 
 
-class JobPostingResponse(JobPostingCreate):
+class JobPostingResponse(JobPostingBase):
     id: int
     author_id: int
     company_id: int
@@ -40,27 +61,15 @@ class JobPostingResponse(JobPostingCreate):
 
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
-class JobPostingUpdate(BaseModel):
-    title: Optional[str]
-    recruit_period_start: Optional[date]
-    recruit_period_end: Optional[date]
-    is_always_recruiting: Optional[bool]
-    education: Optional[EducationEnum]
-    recruit_number: Optional[int]
-    benefits: Optional[str]
-    preferred_conditions: Optional[str]
-    other_conditions: Optional[str]
-    work_address: Optional[str]
-    work_place_name: Optional[str]
-    payment_method: Optional[PaymentMethodEnum]
-    job_category: Optional[JobCategoryEnum]
-    work_duration: Optional[WorkDurationEnum]
-    career: Optional[str]
-    employment_type: Optional[str]
-    salary: Optional[int]
-    deadline_at: Optional[date]
-    work_days: Optional[str]
-    description: Optional[str]
-    posings_image: Optional[str]
+class JobPostingUpdate(JobPostingBase):
+    pass
+
+
+class PaginatedJobPostingResponse(BaseModel):
+    items: List[JobPostingResponse]
+    total: int
+    skip: int
+    limit: int
