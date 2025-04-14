@@ -1,8 +1,8 @@
-"""job application 모델 정의 및 포린키 관계 변경
+"""users lazy 추가
 
-Revision ID: f3e805956c59
-Revises: e3e108bc1c24
-Create Date: 2025-04-09 09:16:08.026689
+Revision ID: 25c320f72f4d
+Revises: eb7721c5bb86
+Create Date: 2025-04-12 17:23:48.538776
 
 """
 
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "f3e805956c59"
-down_revision: Union[str, None] = "e3e108bc1c24"
+revision: str = "25c320f72f4d"
+down_revision: Union[str, None] = "eb7721c5bb86"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -1,13 +1,11 @@
-from pydantic import BaseModel
+from datetime import date, datetime
 from typing import Optional
-from datetime import datetime, date
 
-from app.models.job_postings import (
-    EducationEnum,
-    PaymentMethodEnum,
-    JobCategoryEnum,
-    WorkDurationEnum
-)
+from pydantic import BaseModel
+
+from app.models.job_postings import (EducationEnum, JobCategoryEnum,
+                                     PaymentMethodEnum, WorkDurationEnum)
+
 
 class JobPostingCreate(BaseModel):
     title: str
@@ -42,7 +40,8 @@ class JobPostingResponse(JobPostingCreate):
 
     class Config:
         orm_mode = True
-        
+
+
 class JobPostingUpdate(BaseModel):
     title: Optional[str]
     recruit_period_start: Optional[date]

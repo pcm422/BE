@@ -1,5 +1,7 @@
 import asyncio
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import AsyncSessionFactory
 from app.models.interests import Interest
 
@@ -13,6 +15,7 @@ INTERESTS = [
     {"code": "etc", "name": "기타"},
 ]
 
+
 async def seed():
     async with AsyncSessionFactory() as session:  # db 세션 시작
         for item in INTERESTS:
@@ -24,12 +27,13 @@ async def seed():
         await session.commit()
         print("✅ 관심분야 시드 데이터 삽입 완료!")
 
+
 if __name__ == "__main__":
     asyncio.run(seed())
 
 
-'''
+"""
 docker compose exec app bash
 # 컨테이너 내부에서
 PYTHONPATH=/app poetry run python app/scripts/seed_interests.py
-'''
+"""

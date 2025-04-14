@@ -1,68 +1,82 @@
-from datetime import datetime
-from pydantic import BaseModel, EmailStr, model_validator
-from typing import Optional
-from enum import Enum
+from typing import List, Optional
 
-# 관심분야 Enum (Pydantic용)
-class JobInterestEnum(str, Enum):
-    office = "사무"              # 사무
-    service = "서비스"           # 서비스
-    tech = "기술직"              # 기술직
-    education = "교육/강사"       # 교육/강사
-    public = "서울시 공공일자리"   # 서울시 공공일자리
-    driver = "운전/배송"          # 운전/배송
-    etc = "기타"                 # 기타 (직접입력)
-
-# 사용자 기본 필드 (공통으로 사용하는 필드)
-class UserBase(BaseModel):
-    name: str                      # 사용자 이름
-    email: EmailStr                # 이메일
-    phone_number: Optional[str] = None  # 전화번호 (선택)
-    birthday: Optional[str] = None      # 생년월일
-    gender: Optional[str] = None          # 성별
-    interests: Optional[JobInterestEnum] = None  # 관심 분야 (Enum 사용)
-    custom_interest: Optional[str] = None        # 관심 분야가 '기타'인 경우 직접 입력한 값
-    signup_purpose: Optional[str] = None  # 가입 목적
-    referral_source: Optional[str] = None  # 유입 경로
-
-    @model_validator(mode="after")
-    def validate_interests(cls, model):
-        # 만약 interests에 '기타'가 선택되었다면 custom_interest 필드 필수
-        if model.interests == JobInterestEnum.etc and not model.custom_interest:
-            raise ValueError("관심분야가 '기타'인 경우, custom_interest 필드를 입력해야 합니다.")
-        return model
-
-# 회원 가입 시 사용하는 스키마 (비밀번호 포함)
-class UserCreate(UserBase):
-    password: str   # 반드시 입력해야 하는 비밀번호
-
-# 사용자 정보 수정 시 사용하는 스키마 (모든 필드는 선택적)
-class UserUpdate(BaseModel):
-    name: Optional[str] = None  # 사용자 이름
-    phone_number: Optional[str] = None   # 전화번호
-    birthday: Optional[str] = None  # 생년월일
-    gender: Optional[str] = None  # 성별
-    interests: Optional[JobInterestEnum] = None  # 관심분야 (Enum 사용)
-    custom_interest: Optional[str] = None # 관심 분야가 '기타'인 경우
-    signup_purpose: Optional[str] = None  # 가입 목적
-    referral_source: Optional[str] = None  # 유입 경로
-
-    @model_validator(mode="after")
-    def validate_interests(cls, model):   # 관심분야가 '기타' 일시 반드시 입력되어야함
-        if model.interests == JobInterestEnum.etc and not model.custom_interest:
-            raise ValueError("관심분야가 '기타'인 경우, custom_interest 필드를 입력해야 합니다.")
-        return model  # 검증 완료시 모델 반환
-
-class UserUpdateRequest(UserUpdate):
-    new_password: Optional[str] = None   # 새 비밀번호
-    confirm_password: Optional[str] = None   # 새 비밀번호 확인
+from pydantic import BaseModel, Field
 
 
-# 사용자 조회 시 반환할 스키마 (ORM 모드 활성화)
-class UserRead(UserBase):
-    id: int  # 사용자 고유 ID
-    created_at: datetime  # 생성일
-    updated_at: datetime  # 수정일
+# 회원가입 요청에 대한 스키마 클래스
+class UserRegister(BaseModel):
+    name: str = Field(
+        ..., max_length=50, description="사용자 이름 (최대 50자)"
+    )  # 이름: 필수, 최대 50자
+    email: str = Field(
+        ..., description="중복 불가 이메일"
+    )  # 이메일: 필수, 중복 체크 필요
+    password: str = Field(
+        ..., description="비밀번호 (서버에서 해시 처리)"
+    )  # 비밀번호: 필수, 해시 처리 예정
+    phone_number: Optional[str] = Field(
+        None, description="전화번호"
+    )  # 전화번호: 선택 사항
+    birthday: Optional[str] = Field(
+        None, description="생년월일 (YYYY-MM-DD)"
+    )  # 생년월일: 선택 사항
+    gender: Optional[str] = Field(
+        None, description="성별 (남성 또는 여성)"
+    )  # 성별: 선택 사항
+    interests: Optional[List[str]] = Field(
+        None, description="관심 분야 리스트"
+    )  # 관심분야: 문자열 리스트, 선택 사항
+    signup_purpose: Optional[str] = Field(
+        None, description="가입 목적"
+    )  # 가입 목적: 선택 사항
+    referral_source: Optional[str] = Field(
+        None, description="유입 경로"
+    )  # 유입 경로: 선택 사항
 
-    class Config:
-        orm_mode = True  # ORM 객체 자동 변환
+
+# 로그인 요청에 대한 스키마 클래스
+class UserLogin(BaseModel):
+    email: str = Field(..., description="로그인할 이메일")  # 이메일: 필수
+    password: str = Field(..., description="비밀번호")  # 비밀번호: 필수
+
+
+# 사용자 프로필 업데이트(PATCH) 요청 스키마 클래스
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = Field(
+        None, max_length=50, description="사용자 이름 (최대 50자)"
+    )  # 이름 업데이트: 선택 사항
+    password: Optional[str] = Field(
+        None, description="비밀번호"
+    )  # 비밀번호 업데이트: 선택 사항
+    phone_number: Optional[str] = Field(
+        None, description="전화번호"
+    )  # 전화번호 업데이트: 선택 사항
+    birthday: Optional[str] = Field(
+        None, description="생년월일 (YYYY-MM-DD)"
+    )  # 생년월일 업데이트: 선택 사항
+    gender: Optional[str] = Field(
+        None, description="성별 (남성 또는 여성)"
+    )  # 성별 업데이트: 선택 사항
+    interests: Optional[List[str]] = Field(
+        None, description="관심 분야 리스트"
+    )  # 관심분야 업데이트: 선택 사항
+    signup_purpose: Optional[str] = Field(
+        None, description="가입 목적"
+    )  # 가입 목적 업데이트: 선택 사항
+    referral_source: Optional[str] = Field(
+        None, description="유입 경로"
+    )  # 유입 경로 업데이트: 선택 사항
+
+
+# 비밀번호 재설정 요청 스키마 클래스
+class PasswordReset(BaseModel):
+    email: str = Field(..., description="이메일")  # 이메일: 필수
+    name: str = Field(..., description="사용자 이름")  # 사용자 이름: 필수
+    new_password: str = Field(
+        ..., description="새로운 비밀번호"
+    )  # 새로운 비밀번호: 필수
+
+
+# 리프레쉬 토큰을 사용한 액세스 토큰 재발급 요청 스키마 클래스
+class TokenRefreshRequest(BaseModel):
+    refresh_token: str = Field(..., description="리프레쉬 토큰")  # 리프레쉬 토큰: 필수

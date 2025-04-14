@@ -1,9 +1,11 @@
 from sqladmin.authentication import AuthenticationBackend
-from starlette.requests import Request
-from app.core.db import AsyncSessionFactory
 from sqlalchemy.future import select
-from app.models.admin_users import AdminUser
+from starlette.requests import Request
+
+from app.core.db import AsyncSessionFactory
 from app.core.utils import verify_password
+from app.models.admin_users import AdminUser
+
 
 
 class AdminAuth(AuthenticationBackend):

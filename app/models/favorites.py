@@ -1,7 +1,10 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer
+from sqlalchemy.orm import relationship
+
 from app.models.base import Base
+
 
 class Favorite(Base):
     __tablename__ = "favorite"
@@ -14,6 +17,3 @@ class Favorite(Base):
     # 관계
     user = relationship("User", back_populates="favorites")
     job_posting = relationship("JobPosting", back_populates="favorites")
-    
-    def __str__(self):
-        return f"{self.user.name} - {self.job_posting.title}"
