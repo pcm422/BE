@@ -1,7 +1,5 @@
-from sqlalchemy import Column, Integer, String
-
+from sqlalchemy import Boolean, Column, Integer, String
 from app.models.base import Base
-
 
 class AdminUser(Base):
     __tablename__ = "admin_users"
@@ -9,3 +7,7 @@ class AdminUser(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String(50), unique=True, nullable=False)
     password = Column(String(255), nullable=False)  # 해시 저장
+    is_superuser = Column(Boolean, nullable=False, default=False)
+    
+    def __str__(self):
+        return self.username

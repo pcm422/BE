@@ -1,24 +1,23 @@
 from fastapi import FastAPI
 from sqladmin import Admin, ModelView
-
-from app.admin.auth import AdminAuth
-from app.core.config import SECRET_KEY
 from app.core.db import engine
-from app.models.admin_users import AdminUser
 from app.models.company_info import CompanyInfo
 from app.models.company_users import CompanyUser
-from app.models.favorites import Favorite
 from app.models.interests import Interest
 from app.models.job_applications import JobApplication
-from app.models.job_postings import JobPosting
 from app.models.resumes import Resume
 from app.models.resumes_educations import ResumeEducation
 from app.models.users import User
+from app.models.job_postings import JobPosting
+from app.models.favorites import Favorite
+from app.models.admin_users import AdminUser
+from app.admin.auth import AdminAuth
+from app.core.config import SECRET_KEY
 from app.models.users_interests import UserInterest
-
 
 class UserAdmin(ModelView, model=User):
     column_list = User.__table__.columns.keys()
+    column_searchable_list = ["name", "email"]
     name = "회원"
     name_plural = "회원 목록"
     column_labels = {
@@ -37,12 +36,28 @@ class UserAdmin(ModelView, model=User):
         "updated_at": "수정일",
         "resumes": "이력서",
         "applications": "지원 내역",
-        "favorites": "즐겨찾기",
+        "favorites": "즐겨찾기"
     }
+    
+    async def is_accessible(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
 
+    async def has_create_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_update_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_delete_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
 
 class JobPostingAdmin(ModelView, model=JobPosting):
     column_list = JobPosting.__table__.columns.keys()
+    column_searchable_list = ["title"]
     name = "공고"
     name_plural = "공고 목록"
     column_labels = {
@@ -75,12 +90,13 @@ class JobPostingAdmin(ModelView, model=JobPosting):
         "author": "작성자",
         "company": "회사",
         "favorites": "즐겨찾기",
-        "applications": "지원 내역",
+        "applications": "지원 내역"
     }
-
+    
 
 class FavoriteAdmin(ModelView, model=Favorite):
     column_list = Favorite.__table__.columns.keys()
+    column_searchable_list = ["user_id", "job_posting_id"]
     name = "즐겨찾기"
     name_plural = "즐겨찾기 목록"
     column_labels = {
@@ -89,19 +105,40 @@ class FavoriteAdmin(ModelView, model=Favorite):
         "job_posting_id": "공고",
         "created_at": "작성일",
         "user": "회원",
-        "job_posting": "공고",
+        "job_posting": "공고"
     }
-
+    
 
 class AdminUserAdmin(ModelView, model=AdminUser):
     column_list = AdminUser.__table__.columns.keys()
+    column_searchable_list = ["username"]
     name = "관리자"
     name_plural = "관리자 목록"
-    column_labels = {"id": "번호", "username": "아이디", "password": "비밀번호"}
+    column_labels = {
+        "id": "번호",
+        "username": "아이디",
+        "password": "비밀번호"
+    }
+    
+    async def is_accessible(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
 
+    async def has_create_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
 
+    async def has_update_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_delete_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+    
 class CompanyInfoAdmin(ModelView, model=CompanyInfo):
     column_list = CompanyInfo.__table__.columns.keys()
+    column_searchable_list = ["company_name"]
     name = "기업 정보"
     name_plural = "기업 정보 목록"
     column_labels = {
@@ -114,12 +151,12 @@ class CompanyInfoAdmin(ModelView, model=CompanyInfo):
         "address": "사업장 주소",
         "company_image": "회사 이미지 URL",
         "job_postings": "작성한 공고",
-        "company_users": "담당자",
+        "company_users": "담당자"
     }
-
-
+    
 class CompanyUserAdmin(ModelView, model=CompanyUser):
     column_list = CompanyUser.__table__.columns.keys()
+    column_searchable_list = ["manager_name"]
     name = "기업 담당자"
     name_plural = "기업 담당자 목록"
     column_labels = {
@@ -133,12 +170,28 @@ class CompanyUserAdmin(ModelView, model=CompanyUser):
         "updated_at": "수정일",
         "email": "로그인 이메일",
         "company": "소속 회사",
-        "job_postings": "작성한 공고",
+        "job_postings": "작성한 공고"
     }
+    
+    async def is_accessible(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
 
+    async def has_create_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
 
+    async def has_update_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_delete_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+    
 class jobApplicationAdmin(ModelView, model=JobApplication):
     column_list = JobApplication.__table__.columns.keys()
+    column_searchable_list = ["user_id", "job_posting_id"]
     name = "지원 내역"
     name_plural = "지원 내역 목록"
     column_labels = {
@@ -149,12 +202,12 @@ class jobApplicationAdmin(ModelView, model=JobApplication):
         "created_at": "작성일",
         "updated_at": "수정일",
         "user": "회원",
-        "job_posting": "공고",
+        "job_posting": "공고"
     }
-
-
+    
 class ResumeAdmin(ModelView, model=Resume):
     column_list = Resume.__table__.columns.keys()
+    column_searchable_list = ["company_name"]
     name = "이력서"
     name_plural = "이력서 목록"
     column_labels = {
@@ -170,12 +223,12 @@ class ResumeAdmin(ModelView, model=Resume):
         "created_at": "작성일",
         "updated_at": "수정일",
         "user": "회원",
-        "educations": "학력",
+        "educations": "학력"
     }
-
-
+    
 class ResumeEducationAdmin(ModelView, model=ResumeEducation):
     column_list = ResumeEducation.__table__.columns.keys()
+    column_searchable_list = ["school_name"]
     name = "학력"
     name_plural = "학력 목록"
     column_labels = {
@@ -190,12 +243,12 @@ class ResumeEducationAdmin(ModelView, model=ResumeEducation):
         "end_date": "종료일",
         "resume": "이력서",
         "created_at": "작성일",
-        "updated_at": "수정일",
+        "updated_at": "수정일"
     }
-
-
+    
 class InterestAdmin(ModelView, model=Interest):
     column_list = Interest.__table__.columns.keys()
+    column_searchable_list = ["name"]
     name = "관심분야"
     name_plural = "관심분야 목록"
     column_labels = {
@@ -203,12 +256,12 @@ class InterestAdmin(ModelView, model=Interest):
         "code": "코드",
         "name": "이름",
         "is_custom": "사용자 정의 항목 여부",
-        "user_interests": "회원 관심분야",
+        "user_interests": "회원 관심분야"
     }
-
-
+    
 class UserInterestAdmin(ModelView, model=UserInterest):
     column_list = UserInterest.__table__.columns.keys()
+    column_searchable_list = ["user_id", "interest_id"]
     name = "회원 관심분야"
     name_plural = "회원 관심분야 목록"
     column_labels = {
@@ -216,25 +269,25 @@ class UserInterestAdmin(ModelView, model=UserInterest):
         "user_id": "회원",
         "interest_id": "관심분야",
         "user": "회원",
-        "interest": "관심분야",
+        "interest": "관심분야"
     }
-
+    
 
 def setup_admin(app: FastAPI):
     admin = Admin(
         app,
         engine,
         base_url="/admin",
-        authentication_backend=AdminAuth(secret_key=SECRET_KEY),
+        authentication_backend=AdminAuth(secret_key=SECRET_KEY) 
     )
     admin.add_view(AdminUserAdmin)
     admin.add_view(UserAdmin)
+    admin.add_view(CompanyUserAdmin)
     admin.add_view(UserInterestAdmin)
     admin.add_view(InterestAdmin)
     admin.add_view(JobPostingAdmin)
     admin.add_view(FavoriteAdmin)
     admin.add_view(CompanyInfoAdmin)
-    admin.add_view(CompanyUserAdmin)
     admin.add_view(jobApplicationAdmin)
     admin.add_view(ResumeAdmin)
     admin.add_view(ResumeEducationAdmin)

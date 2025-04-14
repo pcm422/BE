@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from sqlalchemy import Column, Date, DateTime
-from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
@@ -30,3 +29,7 @@ class Resume(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+
+    def __str__(self):
+        return f"{self.user.name} - {self.company_name or '이전 회사 없음'} ({self.position or '직무 없음'})"

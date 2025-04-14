@@ -44,3 +44,6 @@ class JobApplication(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "job_posting_id", name="uq_user_jobposting"),
     )
+
+    def __str__(self):
+        return f"{self.user.name} - {self.job_posting.title}"

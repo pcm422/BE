@@ -17,3 +17,6 @@ class UserInterest(Base):
 
     user = relationship("User", back_populates="user_interests")
     interest = relationship("Interest", back_populates="user_interests")
+
+    def __str__(self):
+        return f"{self.user.name} - {self.interest.name}"

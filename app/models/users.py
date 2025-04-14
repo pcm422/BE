@@ -53,3 +53,6 @@ class User(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+
+    def __str__(self):
+        return self.name
