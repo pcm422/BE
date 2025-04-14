@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +10,38 @@ from app.domains.job_postings.schemas import (JobPostingCreate,
                                               JobPostingUpdate,
                                               PaginatedJobPostingResponse)
 from app.models.company_users import CompanyUser
+from app.models.job_postings import JobPosting
 
 router = APIRouter(prefix="/posting", tags=["채용공고"])
+
+
+async def get_posting_with_permission_check(
+    job_posting_id: int,
+    session: AsyncSession,
+    current_user: CompanyUser,
+    action_type: str = "수정"
+) -> JobPosting:
+    """
+    게시물을 조회하고 권한을 확인하는 공통 함수
+    
+    Args:
+        job_posting_id: 채용공고 ID
+        session: DB 세션
+        current_user: 현재 로그인한 사용자
+        action_type: 작업 타입(수정, 삭제 등)
+        
+    Returns:
+        채용공고 객체
+        
+    Raises:
+        HTTPException: 게시물이 존재하지 않거나 권한이 없는 경우
+    """
+    posting = await service.get_job_posting(session, job_posting_id)
+    if not posting:
+        raise HTTPException(status_code=404, detail=f"{action_type}할 채용공고가 없습니다.")
+    if posting.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail=f"본인 공고만 {action_type}할 수 있습니다.")
+    return posting
 
 
 @router.post(
@@ -89,12 +117,12 @@ async def update_posting(
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
 ):
-    posting = await service.get_job_posting(session, job_posting_id)
-    if not posting:
-        raise HTTPException(status_code=404, detail="수정할 채용공고가 없습니다.")
-    if posting.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="본인 공고만 수정할 수 있습니다.")
-
+    posting = await get_posting_with_permission_check(
+        job_posting_id=job_posting_id,
+        session=session,
+        current_user=current_user,
+        action_type="수정"
+    )
     return await service.update_job_posting(session, job_posting_id, data)
 
 
@@ -109,11 +137,11 @@ async def delete_posting(
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
 ):
-    posting = await service.get_job_posting(session, job_posting_id)
-    if not posting:
-        raise HTTPException(status_code=404, detail="삭제할 채용공고가 없습니다.")
-    if posting.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="본인 공고만 삭제할 수 있습니다.")
-
+    posting = await get_posting_with_permission_check(
+        job_posting_id=job_posting_id,
+        session=session,
+        current_user=current_user,
+        action_type="삭제"
+    )
     await service.delete_job_posting(session, job_posting_id)
     return None

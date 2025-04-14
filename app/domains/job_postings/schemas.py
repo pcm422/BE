@@ -1,7 +1,7 @@
 from datetime import date, datetime
-from typing import List, Optional, Any, Dict
+from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from app.models.job_postings import (EducationEnum, JobCategoryEnum,
                                      PaymentMethodEnum, WorkDurationEnum)
@@ -142,7 +142,7 @@ class JobPostingUpdate(JobPostingBase):
 
 
 class PaginatedJobPostingResponse(BaseModel):
-    items: List[JobPostingResponse]
+    items: list[JobPostingResponse]
     total: int
     skip: int
     limit: int
