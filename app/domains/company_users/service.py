@@ -1,9 +1,9 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.company_users.schemas import CompanyUserRequest
-from app.domains.company_users.utils import (check_business_number_valid,
+from app.domains.company_users.utiles import (check_business_number_valid,
                                              hash_password, verify_password)
 from app.models import CompanyInfo, CompanyUser
 
@@ -49,14 +49,14 @@ async def create_company_info(db: AsyncSession, payload: CompanyUserRequest):
 # 기업 유저 저장
 async def create_company_user(
     db: AsyncSession, payload: CompanyUserRequest, company_id: int
-):
+)-> CompanyUser:
     company_user = CompanyUser(
-        email=payload.email,
+        email=str(payload.email),
         password=hash_password(payload.password),
         company_id=company_id,
         manager_name=payload.manager_name,
         manager_phone=payload.manager_phone,
-        manager_email=payload.manager_email,
+        manager_email=str(payload.manager_email),
     )
 
     db.add(company_user)
@@ -67,7 +67,7 @@ async def create_company_user(
 # 회원가입
 async def register_company_user(db: AsyncSession, payload: CompanyUserRequest):
     # 국세청 진위확인 호출
-    if not await check_business_number_valid(
+    if not check_business_number_valid(
         payload.business_reg_number,
         payload.opening_date.strftime("%Y%m%d"),
         payload.ceo_name,
@@ -78,7 +78,7 @@ async def register_company_user(db: AsyncSession, payload: CompanyUserRequest):
         )
 
     # 중복 확인
-    await check_dupl_email(db, payload.email)
+    await check_dupl_email(db, str(payload.email))
     await check_dupl_business_number(db, payload.business_reg_number)
 
     # 정보 저장
@@ -106,7 +106,7 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
     # 유효값 검증
     if not company_user:
         raise HTTPException(
-            status_code=status.HTTP_404_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail={"가입되지 않은 이메일입니다."}
         )
     if not verify_password(password, company_user.password):
