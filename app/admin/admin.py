@@ -14,6 +14,93 @@ from app.models.admin_users import AdminUser
 from app.admin.auth import AdminAuth
 from app.core.config import SECRET_KEY
 from app.models.users_interests import UserInterest
+from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy import select
+from app.core.db import AsyncSessionFactory
+
+class BaseAdmin(ModelView):
+    async def insert_model(self, request, data):
+        async with AsyncSessionFactory() as session:
+            try:
+                # relationship 필드 분리
+                relation_data = {}
+                model_data = {}
+                for key, value in data.items():
+                    if hasattr(self.model, key) and hasattr(getattr(self.model, key), 'property'):
+                        relation_data[key] = value
+                    else:
+                        model_data[key] = value
+                
+                # 메인 객체 생성
+                obj = self.model(**model_data)
+                session.add(obj)
+                await session.commit()
+                await session.refresh(obj)
+                
+                # relationship 처리
+                for key, value in relation_data.items():
+                    setattr(obj, key, value)
+                
+                await session.commit()
+                return obj
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def update_model(self, request, id, data):
+        async with AsyncSessionFactory() as session:
+            try:
+                # relationship을 포함한 쿼리
+                stmt = select(self.model).where(self.model.id == id)
+                for rel in self.model.__mapper__.relationships:
+                    stmt = stmt.options(selectinload(rel.key))
+                
+                result = await session.execute(stmt)
+                obj = result.scalar_one()
+                
+                # relationship 필드 분리
+                relation_data = {}
+                model_data = {}
+                for key, value in data.items():
+                    if hasattr(self.model, key) and hasattr(getattr(self.model, key), 'property'):
+                        relation_data[key] = value
+                    else:
+                        model_data[key] = value
+                
+                # 일반 필드 업데이트
+                for key, value in model_data.items():
+                    setattr(obj, key, value)
+                
+                # relationship 업데이트
+                for key, value in relation_data.items():
+                    setattr(obj, key, value)
+                
+                await session.commit()
+                await session.refresh(obj)
+                return obj
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def get_list(self):
+        async with AsyncSessionFactory() as session:
+            stmt = select(self.model)
+            # 모든 relationship을 eager loading
+            for rel in self.model.__mapper__.relationships:
+                stmt = stmt.options(selectinload(rel.key))
+            
+            result = await session.execute(stmt)
+            return result.scalars().all()
+
+    async def get_one(self, id):
+        async with AsyncSessionFactory() as session:
+            stmt = select(self.model).where(self.model.id == id)
+            # 모든 relationship을 eager loading
+            for rel in self.model.__mapper__.relationships:
+                stmt = stmt.options(selectinload(rel.key))
+            
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
 
 class UserAdmin(ModelView, model=User):
     column_list = User.__table__.columns.keys()
@@ -33,10 +120,7 @@ class UserAdmin(ModelView, model=User):
         "referral_source": "유입경로",
         "is_active": "이메일 활성상태",
         "created_at": "가입일",
-        "updated_at": "수정일",
-        "resumes": "이력서",
-        "applications": "지원 내역",
-        "favorites": "즐겨찾기"
+        "updated_at": "수정일"
     }
     
     async def is_accessible(self, request) -> bool:
