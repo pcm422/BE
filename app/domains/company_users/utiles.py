@@ -1,53 +1,54 @@
 import os
-
+import httpx
 import bcrypt
 import requests
 from dotenv import load_dotenv
+from fastapi import HTTPException, status
 
 load_dotenv()
 
 
 # 사업자 등록번호 진위확인 (국세청 API)
-def check_business_number_valid(
+async def check_business_number_valid(
     business_reg_number: str, opening_date: str, ceo_name: str
 ) -> bool:
-    url = "https://api.odcloud.kr/api/nts-businessman/v1/status"
-    service_key = os.getenv("SERVICE_KEY")
-
+    service_key = os.getenv("BRN_API_KEY")
+    url = "https://api.odcloud.kr/api/nts-businessman/v1/validate"
+    headers = {"Content-type": "application/json"}
+    params = {"serviceKey": service_key}
     if not service_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"API 키가 설정되지 않았습니다."},
+            detail="API 키가 설정되지 않았습니다.",
         )
 
-    headers = {"content-type": "application/json"}
-    params = {"serviceKey": service_key}
     payload = {
         "businesses": [
             {
-                "b_no": business_reg_number,
-                "start_dt": opening_date,  # "YYYYMMDD"
-                "p_nm": ceo_name,
+                "b_no": business_reg_number.replace("-", ""),
+                "start_dt": opening_date.replace("-", ""),
+                "p_nm": ceo_name
             }
         ]
     }
 
-    response = requests.post(url, headers=headers, params=params, json=payload)
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, params=params, json=payload)
 
     if response.status_code != 200:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"국세청 API 요청 실패"},
+            detail=f"국세청 API 요청 실패: {response.text}",
         )
 
-    result = response.json().get("data", [])
-    if not result:
+    data = response.json().get("data")
+    if not data or not isinstance(data, list) or not data[0].get("valid"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"유효하지 않은 사업자등록번호입니다."},
+            detail="유효하지 않은 사업자등록번호입니다.",
         )
 
-    return result[0].get("valid") == "01"
+    return data[0].get("valid") == "01"
     # 납세자상태(코드):
     # 01: 계속사업자,
     # 02: 휴업자,
