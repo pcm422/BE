@@ -157,7 +157,7 @@ async def reset_pw(data: PasswordReset, db=Depends(get_db_session)):
 
 
 # 관심분야 기반 추천 채용공고 제공
-@router.get("/user/recommend-jobs", tags=["User"])
+@router.get("/user/recommend", tags=["User"])
 async def recommend(
     current_user: User = Depends(read_current_user), db=Depends(get_db_session)
 ):

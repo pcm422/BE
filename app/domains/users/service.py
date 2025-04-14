@@ -257,7 +257,7 @@ async def update_user(
 async def delete_user(db: AsyncSession, user_id: int, current_user: User) -> dict:
     # 본인 확인
     if current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="자신의 회원탈퇴만 가능한다.")
+        raise HTTPException(status_code=403, detail="자신의 회원탈퇴만 가능합니다.")
     # 사용자 조회
     result = await db.execute(select(User).filter(User.id == user_id))  # 사용자 검색
     user = result.scalar_one_or_none()  # 사용자 객체 반환
