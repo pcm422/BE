@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,28 +21,31 @@ async def get_posting_with_permission_check(
     job_posting_id: int,
     session: AsyncSession,
     current_user: CompanyUser,
-    action_type: str = "수정"
+    action_type: str = "접근"
 ) -> JobPosting:
     """
-    게시물을 조회하고 권한을 확인하는 공통 함수
+    채용공고를 조회하고 현재 사용자의 권한을 확인하는 공통 함수
     
     Args:
         job_posting_id: 채용공고 ID
         session: DB 세션
-        current_user: 현재 로그인한 사용자
-        action_type: 작업 타입(수정, 삭제 등)
+        current_user: 현재 로그인한 기업 사용자
+        action_type: 수행하려는 작업 유형(에러 메시지에 사용)
         
     Returns:
-        채용공고 객체
+        JobPosting: 권한이 확인된 채용공고 객체
         
     Raises:
-        HTTPException: 게시물이 존재하지 않거나 권한이 없는 경우
+        HTTPException: 채용공고가 없거나 권한이 없는 경우
     """
     posting = await service.get_job_posting(session, job_posting_id)
     if not posting:
         raise HTTPException(status_code=404, detail=f"{action_type}할 채용공고가 없습니다.")
+    
+    # 작성자만 수정/삭제 가능
     if posting.author_id != current_user.id:
         raise HTTPException(status_code=403, detail=f"본인 공고만 {action_type}할 수 있습니다.")
+    
     return posting
 
 
@@ -79,8 +84,27 @@ async def list_postings(
         session=session, skip=skip, limit=limit
     )
     
-    # SQLAlchemy 모델을 Pydantic 모델로 변환 (Pydantic v2)
-    posting_responses = [JobPostingResponse.model_validate(posting) for posting in postings]
+    # 부분 필드를 포함하는 결과를 JobPostingResponse로 변환
+    posting_responses = []
+    for posting_tuple in postings:
+        # 튜플 형태의 결과를 딕셔너리로 변환
+        posting_dict = {
+            "id": posting_tuple[0],
+            "title": posting_tuple[1],
+            "job_category": posting_tuple[2],
+            "work_address": posting_tuple[3],
+            "salary": posting_tuple[4],
+            "recruit_period_start": posting_tuple[5],
+            "recruit_period_end": posting_tuple[6],
+            "deadline_at": posting_tuple[7],
+            "is_always_recruiting": posting_tuple[8],
+            "created_at": posting_tuple[9],
+            "updated_at": posting_tuple[10],
+            "author_id": posting_tuple[11],
+            "company_id": posting_tuple[12],
+        }
+        # 딕셔너리를 Pydantic 모델로 변환
+        posting_responses.append(JobPostingResponse.model_validate(posting_dict))
     
     return {
         "items": posting_responses,
@@ -117,12 +141,14 @@ async def update_posting(
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
 ):
-    posting = await get_posting_with_permission_check(
+    # 공통 함수를 사용하여 채용공고 조회 및 권한 확인
+    await get_posting_with_permission_check(
         job_posting_id=job_posting_id,
         session=session,
         current_user=current_user,
         action_type="수정"
     )
+    
     return await service.update_job_posting(session, job_posting_id, data)
 
 
@@ -137,11 +163,13 @@ async def delete_posting(
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
 ):
-    posting = await get_posting_with_permission_check(
+    # 공통 함수를 사용하여 채용공고 조회 및 권한 확인
+    await get_posting_with_permission_check(
         job_posting_id=job_posting_id,
         session=session,
         current_user=current_user,
         action_type="삭제"
     )
+    
     await service.delete_job_posting(session, job_posting_id)
     return None
