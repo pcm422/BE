@@ -1,10 +1,13 @@
-from sqlalchemy import (
-    Column, Integer, String, Text, Date, DateTime, Boolean, ForeignKey, Enum as SQLAlchemyEnum
-)
-from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.models.base import Base
 from enum import Enum
+
+from sqlalchemy import Boolean, Column, Date, DateTime
+from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+
+from app.models.base import Base
+
 
 class EducationEnum(str, Enum):
     none = "학력 무관"
@@ -13,12 +16,14 @@ class EducationEnum(str, Enum):
     college_4 = "대졸"
     graduate = "대학원"
 
+
 class PaymentMethodEnum(str, Enum):
     hourly = "시급"
     daily = "일급"
     weekly = "주급"
     monthly = "월급"
     yearly = "연봉"
+
 
 class JobCategoryEnum(str, Enum):
     food = "외식·음료"
@@ -39,6 +44,7 @@ class JobCategoryEnum(str, Enum):
     pro_bar = "전문-BAR"
     pro_labor = "전문-생산직"
     pro_food = "전문-외식업"
+
 
 class WorkDurationEnum(str, Enum):
     more_3_months = "3개월 이상"
@@ -61,7 +67,9 @@ class JobPosting(Base):
     recruit_period_end = Column(Date)
     is_always_recruiting = Column(Boolean, default=False)
 
-    education = Column(SQLAlchemyEnum(EducationEnum, name="education_enum"), nullable=False)
+    education = Column(
+        SQLAlchemyEnum(EducationEnum, name="education_enum"), nullable=False
+    )
     recruit_number = Column(Integer, nullable=False)
     benefits = Column(Text)
     preferred_conditions = Column(Text)
@@ -70,8 +78,12 @@ class JobPosting(Base):
     work_address = Column(String(255), nullable=False)
     work_place_name = Column(String(25), nullable=False)
 
-    payment_method = Column(SQLAlchemyEnum(PaymentMethodEnum, name="payment_method_enum"), nullable=False)
-    job_category = Column(SQLAlchemyEnum(JobCategoryEnum, name="job_category_enum"), nullable=False)
+    payment_method = Column(
+        SQLAlchemyEnum(PaymentMethodEnum, name="payment_method_enum"), nullable=False
+    )
+    job_category = Column(
+        SQLAlchemyEnum(JobCategoryEnum, name="job_category_enum"), nullable=False
+    )
     work_duration = Column(SQLAlchemyEnum(WorkDurationEnum, name="work_duration_enum"))
     career = Column(String(50), nullable=False)
     employment_type = Column(String(50), nullable=False)
@@ -88,5 +100,12 @@ class JobPosting(Base):
     # 관계 설정
     author = relationship("CompanyUser", back_populates="job_postings")
     company = relationship("CompanyInfo", back_populates="job_postings")
-    favorites = relationship("Favorite", back_populates="job_posting", cascade="all, delete-orphan")
-    applications = relationship("JobApplication", back_populates="job_posting", cascade="all, delete-orphan")
+    favorites = relationship(
+        "Favorite", back_populates="job_posting", cascade="all, delete-orphan"
+    )
+    applications = relationship(
+        "JobApplication", back_populates="job_posting", cascade="all, delete-orphan"
+    )
+
+    def __str__(self):
+        return self.title

@@ -16,6 +16,16 @@ services:
       - "8000:8000" # 호스트 8000번 포트를 컨테이너 8000번 포트에 연결
     environment:
       - DATABASE_URL=${DATABASE_URL_LOCAL} # 호스트의 .env 파일에서 읽어옴
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - REFRESH_TOKEN_EXPIRE_MINUTES=${REFRESH_TOKEN_EXPIRE_MINUTES}
+      - NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
+      - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}
+      - NAVER_REDIRECT_URL=${NAVER_REDIRECT_URL}
+      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+      - KAKAO_SECRET=${KAKAO_SECRET}
+      - KAKAO_REDIRECT_URI=${KAKAO_REDIRECT_URI}
       # 개발에 필요한 다른 환경 변수들 추가
       - ENVIRONMENT=local
       - BRN_API_KEY=${BRN_API_KEY}
@@ -34,7 +44,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data # 데이터 영구 저장을 위한 볼륨
     ports:
-      - "5432:5432" # 호스트 5432 포트를 컨테이너 5432 포트에 연결 (DB 툴 연결용)
+      - "5433:5432" # 호스트 5432 포트를 컨테이너 5432 포트에 연결 (DB 툴 연결용)
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}

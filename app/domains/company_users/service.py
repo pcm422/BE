@@ -21,6 +21,8 @@ async def check_dupl_business_number(db: AsyncSession, business_reg_number: str)
         )
 
 
+
+
 # 이메일 중복 확인
 async def check_dupl_email(db: AsyncSession, email: str):
     result = await db.execute(select(CompanyUser).filter_by(email=email))
@@ -70,6 +72,7 @@ async def register_company_user(db: AsyncSession, payload: CompanyUserRequest):
     if not check_business_number_valid(
         payload.business_reg_number,
         payload.opening_date.strftime("%Y%m%d"),
+        payload.ceo_name,
         payload.ceo_name,
     ):
         raise HTTPException(
