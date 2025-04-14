@@ -1,7 +1,6 @@
-from typing import Tuple
-from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 
 from app.domains.job_postings.schemas import JobPostingCreate, JobPostingUpdate
 from app.models.job_postings import JobPosting
@@ -21,7 +20,7 @@ async def create_job_posting(
 
 async def list_job_postings(
     session: AsyncSession, skip: int = 0, limit: int = 10
-) -> Tuple[list[JobPosting], int]:
+) -> tuple[list[JobPosting], int]:
     # 전체 채용공고 수 조회
     count_query = select(func.count()).select_from(JobPosting)
     total_count = await session.scalar(count_query)
@@ -65,14 +64,16 @@ async def update_job_posting(
     return job_posting
 
 
-async def delete_job_posting(session: AsyncSession, job_posting_id: int) -> bool:
+async def delete_job_posting(
+    session: AsyncSession, job_posting_id: int
+) -> JobPosting | None:
     result = await session.execute(
         select(JobPosting).where(JobPosting.id == job_posting_id)
     )
     job_posting = result.scalars().first()
     if not job_posting:
-        return False
+        return None
 
     await session.delete(job_posting)
     await session.commit()
-    return True
+    return job_posting
