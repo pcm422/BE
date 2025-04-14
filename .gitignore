@@ -4,7 +4,7 @@
 
 # Poetry
 .venv/
-poetry.lock # 협업 시에는 포함하는 것이 좋으나, 환경 차이 문제가 발생하면 제외 고려
+poetry.lock
 
 # Python
 __pycache__/
