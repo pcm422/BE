@@ -11,7 +11,7 @@ from app.models import Base
 class Resume(Base):
     __tablename__ = "resumes"  # 테이블 이름
     id = Column(Integer, primary_key=True, index=True)  # 고유 식별자
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # FK = user.id
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)  # FK = user.id
     resume_image = Column(String(255), nullable=True)  # 이력서 사진
     company_name = Column(String(255), nullable=True)  # 이전회사명
     position = Column(String(255), nullable=True)  # 직급/직무
@@ -24,4 +24,9 @@ class Resume(Base):
 
     # 관계
     user = relationship("User", back_populates="resumes")
-    educations = relationship("ResumeEducation", back_populates="resume")
+    educations = relationship(
+        "ResumeEducation",
+        back_populates="resume",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

@@ -27,7 +27,7 @@ class ResumeEducation(Base):
     __tablename__ = "resumes_educations"  # 테이블 이름
     id = Column(Integer, primary_key=True, index=True)  # 고유 식별자
     resumes_id = Column(
-        Integer, ForeignKey("resumes.id"), nullable=False
+        Integer, ForeignKey("resumes.id", ondelete="CASCADE"), nullable=False
     )  # FK = resumes.id
     education_type = Column(
         SQLEnum(EducationTypeEnum, name="educationtype"), nullable=True

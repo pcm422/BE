@@ -39,7 +39,7 @@ class User(Base):
 
     # 관계
     resumes = relationship(
-        "Resume", back_populates="user", cascade="all, delete-orphan"
+        "Resume", back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
     applications = relationship(
         "JobApplication", back_populates="user", cascade="all, delete-orphan"
