@@ -1,6 +1,6 @@
-from typing import List
+from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,10 +9,44 @@ from app.core.utils import get_current_company_user
 from app.domains.job_postings import service
 from app.domains.job_postings.schemas import (JobPostingCreate,
                                               JobPostingResponse,
-                                              JobPostingUpdate)
+                                              JobPostingUpdate,
+                                              PaginatedJobPostingResponse)
 from app.models.company_users import CompanyUser
+from app.models.job_postings import JobPosting
 
 router = APIRouter(prefix="/posting", tags=["채용공고"])
+
+
+async def get_posting_with_permission_check(
+    job_posting_id: int,
+    session: AsyncSession,
+    current_user: CompanyUser,
+    action_type: str = "접근"
+) -> JobPosting:
+    """
+    채용공고를 조회하고 현재 사용자의 권한을 확인하는 공통 함수
+    
+    Args:
+        job_posting_id: 채용공고 ID
+        session: DB 세션
+        current_user: 현재 로그인한 기업 사용자
+        action_type: 수행하려는 작업 유형(에러 메시지에 사용)
+        
+    Returns:
+        JobPosting: 권한이 확인된 채용공고 객체
+        
+    Raises:
+        HTTPException: 채용공고가 없거나 권한이 없는 경우
+    """
+    posting = await service.get_job_posting(session, job_posting_id)
+    if not posting:
+        raise HTTPException(status_code=404, detail=f"{action_type}할 채용공고가 없습니다.")
+    
+    # 작성자만 수정/삭제 가능
+    if posting.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail=f"본인 공고만 {action_type}할 수 있습니다.")
+    
+    return posting
 
 
 @router.post(
@@ -26,7 +60,17 @@ async def create_job_posting(
     data: JobPostingCreate,
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
-):
+) -> JobPostingResponse:
+    """채용공고 생성 API
+    
+    Args:
+        data: 채용공고 생성 요청 데이터
+        session: DB 세션
+        current_user: 현재 로그인한 기업 사용자
+        
+    Returns:
+        생성된 채용공고 정보
+    """
     return await service.create_job_posting(
         session=session,
         data=data,
@@ -37,12 +81,57 @@ async def create_job_posting(
 
 @router.get(
     "/",
-    response_model=List[JobPostingResponse],
-    summary="채용공고 전체 목록 조회",
-    description="모든 채용공고를 조회합니다.",
+    response_model=PaginatedJobPostingResponse,
+    summary="채용공고 목록 조회",
+    description="채용공고 목록을 페이지네이션하여 조회합니다.",
 )
-async def list_postings(session: AsyncSession = Depends(get_db_session)):
-    return await service.list_job_postings(session)
+async def list_postings(
+    skip: int = Query(0, ge=0, description="건너뛸 레코드 수"),
+    limit: int = Query(10, ge=1, le=100, description="가져올 레코드 수"),
+    session: AsyncSession = Depends(get_db_session)
+) -> dict[str, Any]:
+    """채용공고 목록 조회 API
+    
+    Args:
+        skip: 건너뛸 레코드 수 (페이지네이션 offset)
+        limit: 가져올 레코드 수 (페이지네이션 limit)
+        session: DB 세션
+        
+    Returns:
+        페이지네이션된 채용공고 목록 및 메타데이터
+    """
+    postings, total_count = await service.list_job_postings(
+        session=session, skip=skip, limit=limit
+    )
+    
+    # 부분 필드를 포함하는 결과를 JobPostingResponse로 변환
+    posting_responses = []
+    for posting_tuple in postings:
+        # 튜플 형태의 결과를 딕셔너리로 변환
+        posting_dict = {
+            "id": posting_tuple[0],
+            "title": posting_tuple[1],
+            "job_category": posting_tuple[2],
+            "work_address": posting_tuple[3],
+            "salary": posting_tuple[4],
+            "recruit_period_start": posting_tuple[5],
+            "recruit_period_end": posting_tuple[6],
+            "deadline_at": posting_tuple[7],
+            "is_always_recruiting": posting_tuple[8],
+            "created_at": posting_tuple[9],
+            "updated_at": posting_tuple[10],
+            "author_id": posting_tuple[11],
+            "company_id": posting_tuple[12],
+        }
+        # 딕셔너리를 Pydantic 모델로 변환
+        posting_responses.append(JobPostingResponse.model_validate(posting_dict))
+    
+    return {
+        "items": posting_responses,
+        "total": total_count,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.get(
@@ -53,7 +142,19 @@ async def list_postings(session: AsyncSession = Depends(get_db_session)):
 )
 async def get_posting(
     job_posting_id: int, session: AsyncSession = Depends(get_db_session)
-):
+) -> JobPosting:
+    """채용공고 상세 조회 API
+    
+    Args:
+        job_posting_id: 채용공고 ID
+        session: DB 세션
+        
+    Returns:
+        채용공고 상세 정보
+        
+    Raises:
+        HTTPException: 채용공고가 없을 경우
+    """
     posting = await service.get_job_posting(session, job_posting_id)
     if not posting:
         raise HTTPException(status_code=404, detail="채용공고를 찾을 수 없습니다.")
@@ -71,13 +172,26 @@ async def update_posting(
     data: JobPostingUpdate,
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
-):
-    posting = await service.get_job_posting(session, job_posting_id)
-    if not posting:
-        raise HTTPException(status_code=404, detail="수정할 채용공고가 없습니다.")
-    if posting.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="본인 공고만 수정할 수 있습니다.")
-
+) -> JobPosting:
+    """채용공고 수정 API
+    
+    Args:
+        job_posting_id: 채용공고 ID
+        data: 수정할 채용공고 데이터
+        session: DB 세션
+        current_user: 현재 로그인한 기업 사용자
+        
+    Returns:
+        수정된 채용공고 정보
+    """
+    # 공통 함수를 사용하여 채용공고 조회 및 권한 확인
+    await get_posting_with_permission_check(
+        job_posting_id=job_posting_id,
+        session=session,
+        current_user=current_user,
+        action_type="수정"
+    )
+    
     return await service.update_job_posting(session, job_posting_id, data)
 
 
@@ -91,12 +205,24 @@ async def delete_posting(
     job_posting_id: int,
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
-):
-    posting = await service.get_job_posting(session, job_posting_id)
-    if not posting:
-        raise HTTPException(status_code=404, detail="삭제할 채용공고가 없습니다.")
-    if posting.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="본인 공고만 삭제할 수 있습니다.")
-
+) -> None:
+    """채용공고 삭제 API
+    
+    Args:
+        job_posting_id: 채용공고 ID
+        session: DB 세션
+        current_user: 현재 로그인한 기업 사용자
+        
+    Returns:
+        None
+    """
+    # 공통 함수를 사용하여 채용공고 조회 및 권한 확인
+    await get_posting_with_permission_check(
+        job_posting_id=job_posting_id,
+        session=session,
+        current_user=current_user,
+        action_type="삭제"
+    )
+    
     await service.delete_job_posting(session, job_posting_id)
     return None
