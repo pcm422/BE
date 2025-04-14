@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.exceptions import HTTPException
@@ -60,7 +60,17 @@ async def create_job_posting(
     data: JobPostingCreate,
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
-):
+) -> JobPostingResponse:
+    """채용공고 생성 API
+    
+    Args:
+        data: 채용공고 생성 요청 데이터
+        session: DB 세션
+        current_user: 현재 로그인한 기업 사용자
+        
+    Returns:
+        생성된 채용공고 정보
+    """
     return await service.create_job_posting(
         session=session,
         data=data,
@@ -79,7 +89,17 @@ async def list_postings(
     skip: int = Query(0, ge=0, description="건너뛸 레코드 수"),
     limit: int = Query(10, ge=1, le=100, description="가져올 레코드 수"),
     session: AsyncSession = Depends(get_db_session)
-):
+) -> dict[str, Any]:
+    """채용공고 목록 조회 API
+    
+    Args:
+        skip: 건너뛸 레코드 수 (페이지네이션 offset)
+        limit: 가져올 레코드 수 (페이지네이션 limit)
+        session: DB 세션
+        
+    Returns:
+        페이지네이션된 채용공고 목록 및 메타데이터
+    """
     postings, total_count = await service.list_job_postings(
         session=session, skip=skip, limit=limit
     )
@@ -122,7 +142,19 @@ async def list_postings(
 )
 async def get_posting(
     job_posting_id: int, session: AsyncSession = Depends(get_db_session)
-):
+) -> JobPosting:
+    """채용공고 상세 조회 API
+    
+    Args:
+        job_posting_id: 채용공고 ID
+        session: DB 세션
+        
+    Returns:
+        채용공고 상세 정보
+        
+    Raises:
+        HTTPException: 채용공고가 없을 경우
+    """
     posting = await service.get_job_posting(session, job_posting_id)
     if not posting:
         raise HTTPException(status_code=404, detail="채용공고를 찾을 수 없습니다.")
@@ -140,7 +172,18 @@ async def update_posting(
     data: JobPostingUpdate,
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
-):
+) -> JobPosting:
+    """채용공고 수정 API
+    
+    Args:
+        job_posting_id: 채용공고 ID
+        data: 수정할 채용공고 데이터
+        session: DB 세션
+        current_user: 현재 로그인한 기업 사용자
+        
+    Returns:
+        수정된 채용공고 정보
+    """
     # 공통 함수를 사용하여 채용공고 조회 및 권한 확인
     await get_posting_with_permission_check(
         job_posting_id=job_posting_id,
@@ -162,7 +205,17 @@ async def delete_posting(
     job_posting_id: int,
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
-):
+) -> None:
+    """채용공고 삭제 API
+    
+    Args:
+        job_posting_id: 채용공고 ID
+        session: DB 세션
+        current_user: 현재 로그인한 기업 사용자
+        
+    Returns:
+        None
+    """
     # 공통 함수를 사용하여 채용공고 조회 및 권한 확인
     await get_posting_with_permission_check(
         job_posting_id=job_posting_id,

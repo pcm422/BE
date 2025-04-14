@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Any
 
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -8,27 +8,27 @@ from app.models.job_postings import (EducationEnum, JobCategoryEnum,
 
 
 class JobPostingBase(BaseModel):
-    title: Optional[str] = None
-    recruit_period_start: Optional[date] = None
-    recruit_period_end: Optional[date] = None
-    is_always_recruiting: Optional[bool] = None
-    education: Optional[EducationEnum] = None
-    recruit_number: Optional[int] = None  # 0은 "인원 미정" 또는 "수시" 의미
-    benefits: Optional[str] = None
-    preferred_conditions: Optional[str] = None
-    other_conditions: Optional[str] = None
-    work_address: Optional[str] = None
-    work_place_name: Optional[str] = None
-    payment_method: Optional[PaymentMethodEnum] = None
-    job_category: Optional[JobCategoryEnum] = None
-    work_duration: Optional[WorkDurationEnum] = None
-    career: Optional[str] = None
-    employment_type: Optional[str] = None
-    salary: Optional[int] = None
-    deadline_at: Optional[date] = None
-    work_days: Optional[str] = None
-    description: Optional[str] = None
-    posings_image: Optional[str] = None
+    title: str | None = None
+    recruit_period_start: date | None = None
+    recruit_period_end: date | None = None
+    is_always_recruiting: bool | None = None
+    education: EducationEnum | None = None
+    recruit_number: int | None = None  # 0은 "인원 미정" 또는 "수시" 의미
+    benefits: str | None = None
+    preferred_conditions: str | None = None
+    other_conditions: str | None = None
+    work_address: str | None = None
+    work_place_name: str | None = None
+    payment_method: PaymentMethodEnum | None = None
+    job_category: JobCategoryEnum | None = None
+    work_duration: WorkDurationEnum | None = None
+    career: str | None = None
+    employment_type: str | None = None
+    salary: int | None = None
+    deadline_at: date | None = None
+    work_days: str | None = None
+    description: str | None = None
+    posings_image: str | None = None
 
 
 class JobPostingCreate(JobPostingBase):
@@ -134,7 +134,7 @@ class JobPostingUpdate(JobPostingBase):
     
     @field_validator('salary')
     @classmethod
-    def validate_salary(cls, v: Optional[int]) -> Optional[int]:
+    def validate_salary(cls, v: int | None) -> int | None:
         """급여 필드 유효성 검증 (선택적)"""
         if v is not None and v < 0:
             raise ValueError("급여는 0 이상이어야 합니다")
