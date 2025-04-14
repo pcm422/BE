@@ -103,3 +103,80 @@ async def delete_job_posting(
     await session.delete(job_posting)
     await session.commit()
     return job_posting
+
+
+async def search_job_postings(
+    session: AsyncSession,
+    keyword: str | None = None,
+    location: str | None = None,
+    job_category: str | None = None,
+    employment_type: str | None = None,
+    is_always_recruiting: bool | None = None,
+    page: int = 1,
+    limit: int = 10,
+    sort: str = "latest"
+) -> tuple[list[JobPosting], int]:
+    # 목록 조회에 필요한 필드만 선택 (성능 최적화)
+    list_columns = [
+        JobPosting.id,
+        JobPosting.title,
+        JobPosting.job_category,
+        JobPosting.work_address,
+        JobPosting.salary,
+        JobPosting.recruit_period_start,
+        JobPosting.recruit_period_end,
+        JobPosting.deadline_at,
+        JobPosting.is_always_recruiting,
+        JobPosting.created_at,
+        JobPosting.updated_at,
+        JobPosting.author_id,
+        JobPosting.company_id,
+    ]
+    
+    # 기본 쿼리
+    base_query = select(*list_columns).select_from(JobPosting)
+    
+    # 검색 조건 적용
+    if keyword:
+        base_query = base_query.where(
+            JobPosting.title.ilike(f"%{keyword}%") | 
+            JobPosting.description.ilike(f"%{keyword}%")
+        )
+    
+    if location:
+        base_query = base_query.where(JobPosting.work_address.ilike(f"%{location}%"))
+    
+    if job_category:
+        base_query = base_query.where(JobPosting.job_category == job_category)
+    
+    if employment_type:
+        base_query = base_query.where(JobPosting.employment_type == employment_type)
+    
+    if is_always_recruiting is not None:
+        base_query = base_query.where(JobPosting.is_always_recruiting == is_always_recruiting)
+    
+    # 카운트 쿼리 (동일한 필터 적용)
+    count_query = select(func.count(1)).select_from(
+        base_query.alias("filtered_postings")
+    )
+    
+    # 정렬 적용
+    if sort == "latest":
+        base_query = base_query.order_by(desc(JobPosting.created_at))
+    elif sort == "deadline":
+        base_query = base_query.order_by(JobPosting.deadline_at)
+    elif sort == "salary_high":
+        base_query = base_query.order_by(desc(JobPosting.salary))
+    elif sort == "salary_low":
+        base_query = base_query.order_by(JobPosting.salary)
+    
+    # 페이지네이션 적용
+    skip = (page - 1) * limit
+    base_query = base_query.offset(skip).limit(limit)
+    
+    # 쿼리 실행
+    result = await session.execute(base_query)
+    total_count = await session.scalar(count_query)
+    
+    # 결과 반환
+    return list(result.all()), total_count
