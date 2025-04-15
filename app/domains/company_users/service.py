@@ -1,10 +1,18 @@
+from app.domains.users.service import create_access_token, create_refresh_token
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.company_users.schemas import CompanyUserRequest
-from app.domains.company_users.utiles import (check_business_number_valid,
-                                             hash_password, verify_password)
+from app.domains.company_users.schemas import (
+    CompanyUserRequest,
+    CompanyUserUpdateRequest,
+)
+from app.domains.company_users.utiles import (
+    check_business_number_valid,
+    hash_password,
+    verify_password,
+)
 from app.models import CompanyInfo, CompanyUser
 
 
@@ -19,8 +27,6 @@ async def check_dupl_business_number(db: AsyncSession, business_reg_number: str)
             status_code=status.HTTP_409_CONFLICT,
             detail={"이미 등록된 사업자등록번호입니다."},
         )
-
-
 
 
 # 이메일 중복 확인
@@ -51,7 +57,7 @@ async def create_company_info(db: AsyncSession, payload: CompanyUserRequest):
 # 기업 유저 저장
 async def create_company_user(
     db: AsyncSession, payload: CompanyUserRequest, company_id: int
-)-> CompanyUser:
+) -> CompanyUser:
     company_user = CompanyUser(
         email=str(payload.email),
         password=hash_password(payload.password),
@@ -66,19 +72,15 @@ async def create_company_user(
     await db.refresh(company_user)
     return company_user
 
+
 # 회원가입
 async def register_company_user(db: AsyncSession, payload: CompanyUserRequest):
     # 국세청 진위확인 호출
-    if not check_business_number_valid(
+    await check_business_number_valid(
         payload.business_reg_number,
         payload.opening_date.strftime("%Y%m%d"),
         payload.ceo_name,
-        payload.ceo_name,
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"유효하지 않은 사업자등록번호입니다."},
-        )
+    )
 
     # 중복 확인
     await check_dupl_email(db, str(payload.email))
@@ -97,7 +99,7 @@ async def register_company_user(db: AsyncSession, payload: CompanyUserRequest):
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"회원가입 처리 중 오류가 발생했습니다."},
+            detail="회원가입 처리 중 오류가 발생했습니다.",
         )
 
 
@@ -109,13 +111,48 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
     # 유효값 검증
     if not company_user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"가입되지 않은 이메일입니다."}
+            status_code=status.HTTP_404_NOT_FOUND, detail="가입되지 않은 이메일입니다."
         )
     if not verify_password(password, company_user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"비밀번호가 올바르지 않습니다."}
+            detail="비밀번호가 올바르지 않습니다.",
+        )
+    access_token = await create_access_token(data={"sub": company_user.email})
+    refresh_token = await create_refresh_token(data={"sub": company_user.email})
+
+    return {
+        "company_user": company_user,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
+
+
+# 기업 회원 정보수정
+async def update_company_user(
+    db: AsyncSession,
+    company_user_id: int,
+    payload: CompanyUserUpdateRequest,
+    current_user: CompanyUser,
+):
+    if current_user.id != company_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="수정 권한이 없습니다."
         )
 
-    return company_user
+    # 기업 정보 수정
+    if payload.company_intro:
+        current_user.company_intro = payload.company_intro
+    if payload.address:
+        current_user.address = payload.address
+    # 담당자 정보 수정
+    if payload.manager_phone:
+        current_user.manager_phone = payload.manager_phone
+    if payload.manager_email:
+        current_user.manager_email = payload.manager_email
+    if payload.manager_name:
+        current_user.manager_name = payload.manager_name
+
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
