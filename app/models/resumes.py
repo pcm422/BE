@@ -22,13 +22,14 @@ class Resume(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)  # 수정일
 
     # 관계
-    user = relationship("User", back_populates="resumes")
+    user = relationship("User", back_populates="resumes", lazy="selectin")
     educations = relationship(
         "ResumeEducation",
         back_populates="resume",
         cascade="all, delete-orphan",
         lazy="selectin",
         passive_deletes=True,
+        lazy="selectin"
     )
 
     experiences = relationship(
@@ -40,4 +41,4 @@ class Resume(Base):
     )
 
     def __str__(self):
-        return f"{self.user.name} - {self.company_name or '이전 회사 없음'} ({self.position or '직무 없음'})"
+        return f"{self.company_name or '이전 회사 없음'} ({self.position or '직무 없음'})"

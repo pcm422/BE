@@ -1,7 +1,7 @@
 from typing import Any, Optional
 from enum import Enum
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, Form, UploadFile, File
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +11,8 @@ from app.domains.job_postings import service
 from app.domains.job_postings.schemas import (JobPostingCreate,
                                               JobPostingResponse,
                                               JobPostingUpdate,
-                                              PaginatedJobPostingResponse)
+                                              PaginatedJobPostingResponse,
+                                              JobPostingCreateWithImage)
 from app.models.company_users import CompanyUser
 from app.models.job_postings import JobPosting, JobCategoryEnum
 
@@ -62,28 +63,56 @@ async def get_posting_with_permission_check(
     response_model=JobPostingResponse,
     status_code=status.HTTP_201_CREATED,
     summary="채용공고 생성",
-    description="로그인된 기업 담당자가 새로운 채용공고를 등록합니다.",
+    description="로그인된 기업 담당자가 새로운 채용공고를 등록합니다. 이미지 파일을 함께 업로드할 수 있습니다.",
 )
 async def create_job_posting(
-    data: JobPostingCreate,
+    job_posting: JobPostingCreateWithImage = Depends(JobPostingCreateWithImage.as_form),
+    image_file: UploadFile = File(None, description="채용공고 이미지 파일 (선택사항)"),
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
 ) -> JobPostingResponse:
     """채용공고 생성 API
     
     Args:
-        data: 채용공고 생성 요청 데이터
+        job_posting: 채용공고 생성 요청 데이터
+        image_file: 첨부할 이미지 파일 (선택사항)
         session: DB 세션
         current_user: 현재 로그인한 기업 사용자
         
     Returns:
         생성된 채용공고 정보
+    
+    Example:
+        ```
+        # 폼 데이터로 전송:
+        - title: "개발자 채용"
+        - author_id: 1
+        - company_id: 1
+        - recruit_period_start: "2025-04-20"
+        - recruit_period_end: "2025-05-20"
+        - is_always_recruiting: false
+        - education: "college_4"
+        - recruit_number: "2"
+        - work_address: "서울시 강남구"
+        - work_place_name: "본사"
+        - payment_method: "monthly"
+        - job_category: "it"
+        - work_duration: "more_1_year"
+        - career: "경력 3년 이상"
+        - employment_type: "정규직"
+        - salary: "5000000"
+        - deadline_at: "2025-05-10"
+        - work_days: "주 5일"
+        - description: "자세한 설명..."
+        - image_file: [파일 업로드]
+        ```
     """
     return await service.create_job_posting(
         session=session,
-        data=data,
+        data=job_posting,
         author_id=current_user.id,
         company_id=current_user.company_id,
+        image_file=image_file,
     )
 
 

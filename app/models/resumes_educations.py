@@ -42,7 +42,7 @@ class ResumeEducation(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)  # 수정일
 
     # 관계
-    resume = relationship("Resume", back_populates="educations")
+    resume = relationship("Resume", back_populates="educations", lazy="selectin")
 
 
     def __str__(self):
