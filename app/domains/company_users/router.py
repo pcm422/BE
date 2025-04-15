@@ -80,6 +80,19 @@ async def validate_brn(payload: BRNValidationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# 기업 회원 정보 조회 (마이페이지)
+@router.get("/me")
+async def get_companyuser(
+    current_company_user: CompanyUser = Depends(get_current_company_user,),
+):
+    data = await get_company_user_mypage(current_company_user)
+    return {
+        "status": "success",
+        "message": "기업 회원 정보 조회 성공",
+        "data": data,
+    }
+
+
 # 기업 정보 수정
 @router.patch("/{company_user_id}")
 async def update_companyuser(
