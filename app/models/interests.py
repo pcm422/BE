@@ -15,3 +15,6 @@ class Interest(Base):
     user_interests = relationship(
         "UserInterest", back_populates="interest", cascade="all, delete-orphan"
     )
+
+    def __str__(self):
+        return self.name

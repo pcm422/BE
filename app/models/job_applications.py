@@ -46,4 +46,4 @@ class JobApplication(Base):
     )
 
     def __str__(self):
-        return f"{self.user.name} - {self.job_posting.title}"
+        return f"{self.id} - {self.created_at}"
