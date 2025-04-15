@@ -9,12 +9,15 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 # 애플리케이션 시크릿 키 (JWT 토큰 서명 등에 사용)
 SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key_for_safety")
-ALGORITHM= os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES= int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
-REFRESH_TOKEN_EXPIRE_MINUTES= int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES"))
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES"))
 
 # 현재 실행 환경 구분용 변수
 ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+
+# 국세청 api 키
+BRN_API_KEY = os.getenv("BRN_API_KEY")
 
 # # 이메일 전송 관련 환경 변수
 # EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.naver.com")
