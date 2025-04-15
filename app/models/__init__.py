@@ -10,3 +10,4 @@ from .resumes import Resume
 from .resumes_educations import ResumeEducation
 from .users import User
 from .users_interests import UserInterest
+from .job_experience import ResumeExperience

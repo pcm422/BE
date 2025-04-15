@@ -31,6 +31,13 @@ class Resume(Base):
         passive_deletes=True,
     )
 
+    experiences = relationship(
+        "ResumeExperience",
+        back_populates="resume",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        passive_deletes=True
+    )
 
     def __str__(self):
         return f"{self.user.name} - {self.company_name or '이전 회사 없음'} ({self.position or '직무 없음'})"
