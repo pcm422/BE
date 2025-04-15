@@ -36,15 +36,15 @@ async def get_current_company_user(
     try:
         # JWT 토큰 디코딩
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")  # sub 클레임에서 사용자 ID 추출
-        if user_id is None:
+        user_email: str = payload.get("sub")  # sub 클레임에서 사용자 email 추출
+        if user_email is None:
             raise HTTPException(status_code=401, detail="잘못된 토큰입니다.")
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="토큰 검증 실패.")
 
     # 데이터베이스에서 회사 사용자 조회
     result = await db.execute(
-        select(CompanyUser).filter(CompanyUser.id == int(user_id))
+        select(CompanyUser).filter_by(email=user_email)
     )
     company_user = result.scalar_one_or_none()
     

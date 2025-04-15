@@ -3,14 +3,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
 from app.core.utils import get_current_company_user
-from app.domains.company_users.schemas import (BRNValidationRequest,
-                                               CompanyUserLoginRequest,
-                                               CompanyUserRequest,
-                                               CompanyUserUpdateRequest)
-from app.domains.company_users.service import (get_company_user_mypage,
-                                               login_company_user,
-                                               register_company_user,
-                                               update_company_user)
+from app.domains.company_users.schemas import (
+    BRNValidationRequest,
+    CompanyUserLoginRequest,
+    CompanyUserRequest,
+    CompanyUserUpdateRequest,
+)
+from app.domains.company_users.service import (
+    get_company_user_mypage,
+    login_company_user,
+    register_company_user,
+    update_company_user, success_response,
+)
 from app.domains.company_users.utiles import check_business_number_valid
 from app.models import CompanyUser
 
@@ -22,33 +26,16 @@ router = APIRouter(prefix="/company", tags=["Company Users"])  # URL 앞 부분
 async def register_companyuser(
     payload: CompanyUserRequest, db: AsyncSession = Depends(get_db_session)
 ):
-    company_user = await register_company_user(db, payload)
-    return {
-        "status": "success",
-        "message": "회원가입이 완료되었습니다.",
-        "data": company_user,
-    }
-
+    result = await register_company_user(db, payload)
+    return result
 
 # 로그인
 @router.post("/login")
 async def login_companyuser(
     payload: CompanyUserLoginRequest, db: AsyncSession = Depends(get_db_session)
 ):
-    result = await login_company_user(db, payload.email, payload.password)
-    return {
-        "status": "success",
-        "message": "로그인이 완료되었습니다.",
-        "access_token": result["access_token"],
-        "token_type": "bearer",
-        "data": {
-            "company_user": {
-                "company_user_id": result["company_user"].id,
-                "email": result["company_user"].email,
-                "cem_name": result["company_user"].manager_name,
-            }
-        },
-    }
+    data = await login_company_user(db, payload.email, payload.password)
+    return  data
 
 
 # 로그아웃
@@ -68,7 +55,7 @@ async def validate_brn(payload: BRNValidationRequest):
             ceo_name=payload.ceo_name,
         )
         if is_valid:
-            return {"status": "success", "message": "사업자등록번호가 인증되었습니다."}
+            return success_response("사업자등록번호가 인증되었습니다.",{is_valid})
         else:
             raise HTTPException(
                 status_code=409, detail="등록되지 않은 사업자등록번호입니다."
@@ -80,14 +67,15 @@ async def validate_brn(payload: BRNValidationRequest):
 # 기업 회원 정보 조회 (마이페이지)
 @router.get("/me")
 async def get_companyuser(
-    current_company_user: CompanyUser = Depends(get_current_company_user,),
+    db: AsyncSession = Depends(get_db_session),
+    current_company_user: CompanyUser = Depends(get_current_company_user),
 ):
-    data = await get_company_user_mypage(current_company_user)
-    return {
-        "status": "success",
-        "message": "기업 회원 정보 조회 성공",
-        "data": data,
-    }
+    data = await get_company_user_mypage(
+        db=db,
+        company_user_id=current_company_user.id,
+        current_user=current_company_user,
+    )
+    return data
 
 
 # 기업 정보 수정
@@ -97,9 +85,18 @@ async def update_companyuser(
     db: AsyncSession = Depends(get_db_session),
     current_company_user: CompanyUser = Depends(get_current_company_user),
 ):
-    company_user_update = await update_company_user(db, payload, current_company_user)
-    return {
-        "status": "success",
-        "message": "기업 정보가 수정되었습니다.",
-        "data": company_user_update
-    }
+    update_data = await update_company_user(
+        db=db, payload=payload, current_user=current_company_user,
+        company_user_id=current_company_user.id,
+    )
+    return update_data
+
+# 기업 회원 탈퇴
+@router.delete("/{company_user_id}")
+async def delete_companyuser(
+        company_user_id: int,
+        current_company_user: CompanyUser = Depends(get_current_company_user),
+        db: AsyncSession = Depends(get_db_session),
+):
+    result = await delete_companyuser(db=db, company_user_id=company_user_id,current_user=current_company_user)
+    return result

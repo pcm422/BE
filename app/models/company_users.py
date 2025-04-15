@@ -24,7 +24,7 @@ class CompanyUser(Base):
         DateTime, default=datetime.now, onupdate=datetime.now
     )  # 수정 날짜
 
-    job_postings = relationship("JobPosting", back_populates="author")
+    job_postings = relationship("JobPosting", back_populates="author",lazy="selectin")
     company = relationship("CompanyInfo", back_populates="company_users",lazy="selectin")
 
     def __str__(self):
