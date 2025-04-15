@@ -1,6 +1,7 @@
 import os
-import httpx
+
 import bcrypt
+import httpx
 import requests
 from dotenv import load_dotenv
 from fastapi import HTTPException, status
