@@ -17,6 +17,7 @@ from app.models.users_interests import UserInterest
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import select
 from app.core.db import AsyncSessionFactory
+from app.models.job_experience import ResumeExperience
 
 class BaseAdmin(ModelView):
     async def insert_model(self, request, data):
@@ -330,6 +331,24 @@ class ResumeEducationAdmin(ModelView, model=ResumeEducation):
         "updated_at": "수정일"
     }
     
+class ResumeExperienceAdmin(ModelView, model=ResumeExperience):
+    column_list = ResumeExperience.__table__.columns.keys()
+    column_searchable_list = ["company_name", "position"]
+    name = "경력사항"
+    name_plural = "경력사항 목록"
+    column_labels = {
+        "id": "번호",
+        "resume_id": "이력서",
+        "company_name": "회사명",
+        "position": "직무/직급",
+        "start_date": "근무 시작일",
+        "end_date": "근무 종료일",
+        "description": "상세 업무 내용",
+        "created_at": "작성일",
+        "updated_at": "수정일",
+        "resume": "이력서"
+    }
+    
 class InterestAdmin(ModelView, model=Interest):
     column_list = Interest.__table__.columns.keys()
     column_searchable_list = ["name"]
@@ -375,3 +394,4 @@ def setup_admin(app: FastAPI):
     admin.add_view(jobApplicationAdmin)
     admin.add_view(ResumeAdmin)
     admin.add_view(ResumeEducationAdmin)
+    admin.add_view(ResumeExperienceAdmin)
