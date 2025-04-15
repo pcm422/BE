@@ -29,6 +29,11 @@ services:
       # 개발에 필요한 다른 환경 변수들 추가
       - ENVIRONMENT=local
       - BRN_API_KEY=${BRN_API_KEY}
+      - NCP_ACCESS_KEY=${NCP_ACCESS_KEY}
+      - NCP_SECRET_KEY=${NCP_SECRET_KEY}
+      - NCP_BUCKET_NAME=${NCP_BUCKET_NAME}
+      - NCP_ENDPOINT=${NCP_ENDPOINT}
+      - NCP_REGION=${NCP_REGION}
     depends_on:
       - db
     # healthcheck 추가 고려 (DB 준비될 때까지 대기)

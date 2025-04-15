@@ -39,13 +39,23 @@ class User(Base):
 
     # 관계
     resumes = relationship(
-        "Resume", back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+        "Resume", 
+        back_populates="user", 
+        cascade="all, delete-orphan", 
+        passive_deletes=True,
+        lazy="selectin"
     )
     applications = relationship(
-        "JobApplication", back_populates="user", cascade="all, delete-orphan"
+        "JobApplication", 
+        back_populates="user", 
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
     favorites = relationship(
-        "Favorite", back_populates="user", cascade="all, delete-orphan"
+        "Favorite", 
+        back_populates="user", 
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
     user_interests = relationship(
         "UserInterest",

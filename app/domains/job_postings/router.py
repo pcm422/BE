@@ -1,6 +1,7 @@
-from typing import Any
+from typing import Any, Optional
+from enum import Enum
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, Form, UploadFile, File
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,9 +11,17 @@ from app.domains.job_postings import service
 from app.domains.job_postings.schemas import (JobPostingCreate,
                                               JobPostingResponse,
                                               JobPostingUpdate,
-                                              PaginatedJobPostingResponse)
+                                              PaginatedJobPostingResponse,
+                                              JobPostingCreateWithImage)
 from app.models.company_users import CompanyUser
-from app.models.job_postings import JobPosting
+from app.models.job_postings import JobPosting, JobCategoryEnum
+
+# SortOptions Enum 클래스 추가
+class SortOptions(str, Enum):
+    LATEST = "latest"
+    DEADLINE = "deadline"
+    SALARY_HIGH = "salary_high"
+    SALARY_LOW = "salary_low"
 
 router = APIRouter(prefix="/posting", tags=["채용공고"])
 
@@ -54,28 +63,56 @@ async def get_posting_with_permission_check(
     response_model=JobPostingResponse,
     status_code=status.HTTP_201_CREATED,
     summary="채용공고 생성",
-    description="로그인된 기업 담당자가 새로운 채용공고를 등록합니다.",
+    description="로그인된 기업 담당자가 새로운 채용공고를 등록합니다. 이미지 파일을 함께 업로드할 수 있습니다.",
 )
 async def create_job_posting(
-    data: JobPostingCreate,
+    job_posting: JobPostingCreateWithImage = Depends(JobPostingCreateWithImage.as_form),
+    image_file: UploadFile = File(None, description="채용공고 이미지 파일 (선택사항)"),
     session: AsyncSession = Depends(get_db_session),
     current_user: CompanyUser = Depends(get_current_company_user),
 ) -> JobPostingResponse:
     """채용공고 생성 API
     
     Args:
-        data: 채용공고 생성 요청 데이터
+        job_posting: 채용공고 생성 요청 데이터
+        image_file: 첨부할 이미지 파일 (선택사항)
         session: DB 세션
         current_user: 현재 로그인한 기업 사용자
         
     Returns:
         생성된 채용공고 정보
+    
+    Example:
+        ```
+        # 폼 데이터로 전송:
+        - title: "개발자 채용"
+        - author_id: 1
+        - company_id: 1
+        - recruit_period_start: "2025-04-20"
+        - recruit_period_end: "2025-05-20"
+        - is_always_recruiting: false
+        - education: "college_4"
+        - recruit_number: "2"
+        - work_address: "서울시 강남구"
+        - work_place_name: "본사"
+        - payment_method: "monthly"
+        - job_category: "it"
+        - work_duration: "more_1_year"
+        - career: "경력 3년 이상"
+        - employment_type: "정규직"
+        - salary: "5000000"
+        - deadline_at: "2025-05-10"
+        - work_days: "주 5일"
+        - description: "자세한 설명..."
+        - image_file: [파일 업로드]
+        ```
     """
     return await service.create_job_posting(
         session=session,
-        data=data,
+        data=job_posting,
         author_id=current_user.id,
         company_id=current_user.company_id,
+        image_file=image_file,
     )
 
 
@@ -130,6 +167,81 @@ async def list_postings(
         "items": posting_responses,
         "total": total_count,
         "skip": skip,
+        "limit": limit,
+    }
+
+
+@router.get(
+    "/search",
+    response_model=PaginatedJobPostingResponse,
+    summary="채용공고 검색",
+    description="키워드 및 필터 기반으로 채용공고를 검색합니다.",
+)
+async def search_postings(
+    keyword: str | None = Query(None, description="검색 키워드 (제목, 내용에서 검색)"),
+    location: str | None = Query(None, description="근무지 위치"),
+    job_category: JobCategoryEnum | None = Query(None, description="직무 카테고리"),
+    employment_type: str | None = Query(None, description="고용 형태"),
+    is_always_recruiting: bool | None = Query(None, description="상시 채용 여부"),
+    page: int = Query(1, ge=1, description="페이지 번호"),
+    limit: int = Query(10, ge=1, le=100, description="페이지당 결과 수"),
+    sort: SortOptions = Query(SortOptions.LATEST, description="정렬 기준"),
+    session: AsyncSession = Depends(get_db_session)
+) -> dict[str, Any]:
+    """채용공고 검색 API
+    
+    Args:
+        keyword: 검색 키워드 (제목, 내용에서 검색)
+        location: 근무지 위치
+        job_category: 직무 카테고리
+        employment_type: 고용 형태
+        is_always_recruiting: 상시 채용 여부
+        page: 페이지 번호
+        limit: 페이지당 결과 수
+        sort: 정렬 기준 (latest: 최신순, deadline: 마감일순, salary_high: 연봉 높은순, salary_low: 연봉 낮은순)
+        session: DB 세션
+        
+    Returns:
+        페이지네이션된 채용공고 검색 결과 및 메타데이터
+    """
+    postings, total_count = await service.search_job_postings(
+        session=session,
+        keyword=keyword,
+        location=location,
+        job_category=job_category.value if job_category else None,
+        employment_type=employment_type,
+        is_always_recruiting=is_always_recruiting,
+        page=page,
+        limit=limit,
+        sort=sort.value
+    )
+    
+    # 부분 필드를 포함하는 결과를 JobPostingResponse로 변환
+    posting_responses = []
+    for posting_tuple in postings:
+        # 튜플 형태의 결과를 딕셔너리로 변환
+        posting_dict = {
+            "id": posting_tuple[0],
+            "title": posting_tuple[1],
+            "job_category": posting_tuple[2],
+            "work_address": posting_tuple[3],
+            "salary": posting_tuple[4],
+            "recruit_period_start": posting_tuple[5],
+            "recruit_period_end": posting_tuple[6],
+            "deadline_at": posting_tuple[7],
+            "is_always_recruiting": posting_tuple[8],
+            "created_at": posting_tuple[9],
+            "updated_at": posting_tuple[10],
+            "author_id": posting_tuple[11],
+            "company_id": posting_tuple[12],
+        }
+        # 딕셔너리를 Pydantic 모델로 변환
+        posting_responses.append(JobPostingResponse.model_validate(posting_dict))
+    
+    return {
+        "items": posting_responses,
+        "total": total_count,
+        "skip": (page - 1) * limit,
         "limit": limit,
     }
 

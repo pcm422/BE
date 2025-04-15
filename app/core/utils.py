@@ -1,13 +1,23 @@
 import bcrypt
 import jwt
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+import boto3
+import uuid
+import os
+from datetime import datetime
 
 from app.core.config import ALGORITHM, SECRET_KEY
 from app.core.db import get_db_session
 from app.models.company_users import CompanyUser
 
+# NCP Object Storage 접속 정보
+NCP_ACCESS_KEY = os.getenv("NCP_ACCESS_KEY")
+NCP_SECRET_KEY = os.getenv("NCP_SECRET_KEY")
+NCP_BUCKET_NAME = os.getenv("NCP_BUCKET_NAME")
+NCP_ENDPOINT = os.getenv("NCP_ENDPOINT", "https://kr.object.ncloudstorage.com")
+NCP_REGION = os.getenv("NCP_REGION", "kr-standard")
 
 # 인증된 회사 사용자 반환 (JWT 토큰 기반)
 async def get_current_company_user(
@@ -56,3 +66,51 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(
         plain_password.encode("utf-8"), hashed_password.encode("utf-8")
     )
+
+async def upload_image_to_ncp(file: UploadFile, folder: str = "job_postings"):
+    """
+    이미지 파일을 NCP Object Storage에 업로드하고 URL을 반환
+    
+    Args:
+        file: 업로드할 파일 객체
+        folder: 저장할 폴더 경로
+        
+    Returns:
+        str: 업로드된 파일의 URL
+    """
+    if not file:
+        return None
+        
+    # 파일 확장자 확인
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in ['.jpg', '.jpeg', '.png', '.gif']:
+        raise ValueError("지원되지 않는 이미지 형식입니다.")
+    
+    # 고유한 파일명 생성
+    today = datetime.now().strftime("%Y%m%d")
+    unique_filename = f"{folder}/{today}_{uuid.uuid4()}{file_ext}"
+    
+    # S3 클라이언트 생성 (NCP Object Storage는 S3 호환)
+    s3_client = boto3.client(
+        's3',
+        endpoint_url=NCP_ENDPOINT,
+        aws_access_key_id=NCP_ACCESS_KEY,
+        aws_secret_access_key=NCP_SECRET_KEY,
+        region_name=NCP_REGION
+    )
+    
+    # 파일 데이터 읽기
+    contents = await file.read()
+    
+    # 파일 업로드
+    s3_client.put_object(
+        Bucket=NCP_BUCKET_NAME,
+        Key=unique_filename,
+        Body=contents,
+        ContentType=file.content_type
+    )
+    
+    # 업로드된 파일의 URL 생성
+    url = f"{NCP_ENDPOINT}/{NCP_BUCKET_NAME}/{unique_filename}"
+    
+    return url
