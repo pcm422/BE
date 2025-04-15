@@ -28,8 +28,7 @@ class Resume(Base):
         back_populates="resume",
         cascade="all, delete-orphan",
         lazy="selectin",
-        passive_deletes=True,
-        lazy="selectin"
+        passive_deletes=True
     )
 
     experiences = relationship(
