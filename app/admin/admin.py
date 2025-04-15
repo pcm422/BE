@@ -17,6 +17,34 @@ from app.models.users_interests import UserInterest
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import select
 from app.core.db import AsyncSessionFactory
+from app.models.job_experience import ResumeExperience
+import bcrypt
+
+# 비밀번호 암호화 믹스인 클래스
+class PasswordHashMixin:
+    async def insert_model(self, request, data):
+        # 비밀번호 암호화
+        if "password" in data and data["password"] and not self._is_hashed(data["password"]):
+            password_bytes = data["password"].encode('utf-8')
+            hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+            data["password"] = hashed.decode('utf-8')
+        
+        # 부모 클래스의 insert_model 메서드 호출
+        return await super().insert_model(request, data)
+    
+    async def update_model(self, request, pk, data):
+        # 비밀번호 암호화
+        if "password" in data and data["password"] and not self._is_hashed(data["password"]):
+            password_bytes = data["password"].encode('utf-8')
+            hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+            data["password"] = hashed.decode('utf-8')
+        
+        # 부모 클래스의 update_model 메서드 호출
+        return await super().update_model(request, pk, data)
+    
+    def _is_hashed(self, password):
+        # 이미 해싱된 비밀번호인지 확인
+        return password.startswith("$2b$") or password.startswith("$2a$")
 
 class BaseAdmin(ModelView):
     async def insert_model(self, request, data):
@@ -102,7 +130,7 @@ class BaseAdmin(ModelView):
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
-class UserAdmin(ModelView, model=User):
+class UserAdmin(PasswordHashMixin, ModelView, model=User):
     column_list = User.__table__.columns.keys()
     column_searchable_list = ["name", "email"]
     name = "회원"
@@ -193,7 +221,7 @@ class FavoriteAdmin(ModelView, model=Favorite):
     }
     
 
-class AdminUserAdmin(ModelView, model=AdminUser):
+class AdminUserAdmin(PasswordHashMixin, ModelView, model=AdminUser):
     column_list = AdminUser.__table__.columns.keys()
     column_searchable_list = ["username"]
     name = "관리자"
@@ -238,7 +266,7 @@ class CompanyInfoAdmin(ModelView, model=CompanyInfo):
         "company_users": "담당자"
     }
     
-class CompanyUserAdmin(ModelView, model=CompanyUser):
+class CompanyUserAdmin(PasswordHashMixin, ModelView, model=CompanyUser):
     column_list = CompanyUser.__table__.columns.keys()
     column_searchable_list = ["manager_name"]
     name = "기업 담당자"
@@ -330,6 +358,24 @@ class ResumeEducationAdmin(ModelView, model=ResumeEducation):
         "updated_at": "수정일"
     }
     
+class ResumeExperienceAdmin(ModelView, model=ResumeExperience):
+    column_list = ResumeExperience.__table__.columns.keys()
+    column_searchable_list = ["company_name", "position"]
+    name = "경력사항"
+    name_plural = "경력사항 목록"
+    column_labels = {
+        "id": "번호",
+        "resume_id": "이력서",
+        "company_name": "회사명",
+        "position": "직무/직급",
+        "start_date": "근무 시작일",
+        "end_date": "근무 종료일",
+        "description": "상세 업무 내용",
+        "created_at": "작성일",
+        "updated_at": "수정일",
+        "resume": "이력서"
+    }
+    
 class InterestAdmin(ModelView, model=Interest):
     column_list = Interest.__table__.columns.keys()
     column_searchable_list = ["name"]
@@ -375,3 +421,4 @@ def setup_admin(app: FastAPI):
     admin.add_view(jobApplicationAdmin)
     admin.add_view(ResumeAdmin)
     admin.add_view(ResumeEducationAdmin)
+    admin.add_view(ResumeExperienceAdmin)

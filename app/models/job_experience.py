@@ -21,3 +21,6 @@ class ResumeExperience(Base):                              # 경력사항 테이
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)  # 수정일
 
     resume = relationship("Resume", back_populates="experiences")
+    
+    def __str__(self):
+        return f"{self.company_name} - {self.position}"
