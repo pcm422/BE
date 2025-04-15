@@ -1,18 +1,12 @@
-from app.domains.users.service import create_access_token, create_refresh_token
-
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.company_users.schemas import (
-    CompanyUserRequest,
-    CompanyUserUpdateRequest,
-)
-from app.domains.company_users.utiles import (
-    check_business_number_valid,
-    hash_password,
-    verify_password,
-)
+from app.domains.company_users.schemas import (CompanyUserRequest,
+                                               CompanyUserUpdateRequest)
+from app.domains.company_users.utiles import (check_business_number_valid,
+                                              hash_password, verify_password)
+from app.domains.users.service import create_access_token, create_refresh_token
 from app.models import CompanyInfo, CompanyUser
 
 
@@ -118,13 +112,47 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="비밀번호가 올바르지 않습니다.",
         )
-    access_token = await create_access_token(data={"sub": company_user.email})
-    refresh_token = await create_refresh_token(data={"sub": company_user.email})
+    access_token = await create_access_token(data={"sub": company_user.id})
+    refresh_token = await create_refresh_token(data={"sub": company_user.id})
 
     return {
         "company_user": company_user,
         "access_token": access_token,
         "refresh_token": refresh_token,
+    }
+
+
+# 기업 회원 정보 조회(마이페이지)
+async def get_company_user_mypage(
+    db: AsyncSession, company_user_id: int, current_user: CompanyUser
+):
+    if current_user.id != company_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="로그인이 필요합니다."
+        )
+    if not current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="해당 기업 정보를 찾을 수 없습니다.",
+        )
+    return {
+        "company_info": {
+            "company_user": current_user.company.company_name,  # 기업이름
+            "manager_name": current_user.manager_name,  # 담당자이름
+            "manager_email": current_user.manager_email,  # 담당자이메일
+            "manager_phone": current_user.manager_phone,  # 담당자 전화번호
+            "company_intro": current_user.company.company_intro,  # 기업소개
+        },
+        "jop_postings": [  # 등록된 공고리스트
+            {
+                "id": job_posting.id,
+                "title": job_posting.title,
+                "work_address": job_posting.work_address,
+                "deadline_at": job_posting.deadline_at,
+                "is_always_recruiting": job_posting.is_always_recruiting,
+            }
+            for job_posting in current_user.job_postings
+        ],
     }
 
 
@@ -156,3 +184,27 @@ async def update_company_user(
     await db.commit()
     await db.refresh(current_user)
     return current_user
+
+# 기업 회원 탈퇴
+async def delete_company_user(db: AsyncSession, company_user_id: int,current_user: CompanyUser):
+
+    if current_user.id != company_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="권한이 없습니다."
+        )
+    user = await db.get(CompanyUser, company_user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="회원 정보가 없습니다."
+        )
+    if company_user_id:
+        await db.delete(
+            select(CompanyUser).filter_by(id=company_user_id)
+        )
+    return {
+        "status": "success",
+        "message": "회원 탈퇴가 정상적으로 처리 되었습니다."
+    }
+
