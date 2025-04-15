@@ -9,6 +9,13 @@ from app.domains.company_users.utiles import (check_business_number_valid,
 from app.domains.users.service import create_access_token, create_refresh_token
 from app.models import CompanyInfo, CompanyUser
 
+# 공통 응답 포맷 함수
+def success_response(message: str, data):
+    return {
+        "status": "success",
+        "message": message,
+        "data": data,
+    }
 
 # 사업자 등록번호 중복 확인
 async def check_dupl_business_number(db: AsyncSession, business_reg_number: str):
