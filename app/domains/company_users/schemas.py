@@ -39,7 +39,7 @@ class CompanyUserLoginRequest(BaseModel):
 class CompanyUserUpdateRequest(BaseModel):
     company_intro: Optional[str]
     address: Optional[str]
-    compant_image: Optional[str]
+    company_image: Optional[str]
     manager_name: Optional[str]
     manager_phone: Optional[str]
     manager_email: Optional[str]
