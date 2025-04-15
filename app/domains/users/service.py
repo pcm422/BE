@@ -195,9 +195,7 @@ async def update_user(
     if update_data.name is not None:
         user.name = update_data.name  # 이름 업데이트
     if update_data.password is not None:
-        user.password = get_password_hash(
-            update_data.password
-        )  # 비밀번호 해시 후 업데이트
+        user.password = get_password_hash(update_data.password)  # 비밀번호 해시 후 업데이트
     if update_data.phone_number is not None:
         user.phone_number = update_data.phone_number  # 전화번호 업데이트
     if update_data.birthday is not None:
@@ -231,9 +229,9 @@ async def update_user(
             db.add(user_interest)  # DB 세션에 추가
         await db.commit()  # 관심분야 업데이트 커밋
 
-    await db.commit()  # 사용자 정보 업데이트 커밋
-    await db.refresh(user)  # 사용자 최신 정보 갱신
-    user = result.unique().scalar_one()
+    await db.commit()         # 사용자 정보 업데이트 후 최종 커밋
+    await db.refresh(user)    # user 객체를 최신 상태로 갱신
+    # 기존 result 객체를 재사용하는 부분을 제거하여 오류 방지
 
     response_data = {
         "id": user.id,  # 사용자 ID
