@@ -17,6 +17,10 @@ router = APIRouter()
 # 현재 사용자의 이력서를 조회함
 @router.get("/resumes", tags=["이력서"])
 async def get_resume(Authorization: str = Header(...), db: AsyncSession = Depends(get_db_session)):
+    """
+    현재 인증된 사용자의 최신 이력서를 조회한다.
+    jwt 토큰을 사용하여 사용자를 식별하고 이력서와 연관된 학력정보를 가져온다.
+    """
     # 현재 인증된 사용자 정보를 가져옴
     user = await read_current_user(Authorization=Authorization, db=db)
     # 쿼리 시점에 'selectinload'를 통해 educations 관계를 미리 로드함
@@ -32,6 +36,12 @@ async def create_resume(
     Authorization: str = Header(...),       # 인증 토큰
     db: AsyncSession = Depends(get_db_session)  # DB 세션 의존성
 ):
+    """
+    새로운 이력서를 생성한다.
+    바디에는 이력서 정보와 학력사항 정보를 포함한 정보를 받는다.
+    jwt로 사용자를 확인하고 정보에 user_id가 일치해야 한다.
+    생성 후 이력서, 학력사항 반환한다.
+    """
     # 현재 사용자를 토큰으로부터 조회
     user = await read_current_user(Authorization=Authorization, db=db)
     # user_id 검증 (JWT 토큰의 사용자와 요청 바디의 user_id가 동일해야 함)
@@ -48,6 +58,11 @@ async def update_resume(
     Authorization: str = Header(...),  # Authorization 헤더에서 토큰 수신
     db: AsyncSession = Depends(get_db_session)  # DB 세션 의존성 주입
 ):
+    """
+    url에 지정된 이력서 id에 해당하는 이력서를 수정할수 있다.
+    jwt로 사용자를 확인하고 해당 사용자만 이력서를 수정 할 수 있다.
+    수정 후 최신 이력서와 학력사항을 반환한다.
+    """
     # 현재 인증된 사용자 정보를 가져옴
     user = await read_current_user(Authorization=Authorization, db=db)
     try:
@@ -63,6 +78,10 @@ async def delete_resume(
     Authorization: str = Header(...),  # Authorization 헤더에서 토큰 수신
     db: AsyncSession = Depends(get_db_session)  # DB 세션 의존성 주입
 ):
+    """
+    url에 지정된 이력서 id에 해당하는 이력서를 삭제한다.
+    jwt로 사용자를 확인하고 해당 사용자만 이력서를 삭제 할 수 있다.
+    """
     # 현재 인증된 사용자 정보를 가져옴
     user = await read_current_user(Authorization=Authorization, db=db)
     try:
