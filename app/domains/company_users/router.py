@@ -1,19 +1,16 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
 from app.core.utils import get_current_company_user
-from app.domains.company_users.schemas import (
-    CompanyUserRequest,
-    CompanyUserLoginRequest,
-    BRNValidationRequest,
-    CompanyUserUpdateRequest,
-)
-from app.domains.company_users.service import (
-    register_company_user,
-    login_company_user,
-    update_company_user,
-)
+from app.domains.company_users.schemas import (BRNValidationRequest,
+                                               CompanyUserLoginRequest,
+                                               CompanyUserRequest,
+                                               CompanyUserUpdateRequest)
+from app.domains.company_users.service import (get_company_user_mypage,
+                                               login_company_user,
+                                               register_company_user,
+                                               update_company_user)
 from app.domains.company_users.utiles import check_business_number_valid
 from app.models import CompanyUser
 
@@ -98,18 +95,11 @@ async def get_companyuser(
 async def update_companyuser(
     payload: CompanyUserUpdateRequest,
     db: AsyncSession = Depends(get_db_session),
-    current_user: CompanyUser = Depends(get_current_company_user),
+    current_company_user: CompanyUser = Depends(get_current_company_user),
 ):
-    company_user_update = await update_company_user(db, payload, current_user)
+    company_user_update = await update_company_user(db, payload, current_company_user)
     return {
         "status": "success",
         "message": "기업 정보가 수정되었습니다.",
-        "data": {
-            "company_user_id": company_user_update["company_user_id"],
-            "company_intro": company_user_update["company_intro"],
-            "address": company_user_update["address"],
-            "manager_name": company_user_update["manager_name"],
-            "manager_email": company_user_update["manager_email"],
-            "manager_phone": company_user_update["manager_phone"],
-        },
+        "data": company_user_update
     }
