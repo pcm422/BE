@@ -103,3 +103,13 @@ async def update_companyuser(
         "message": "기업 정보가 수정되었습니다.",
         "data": company_user_update
     }
+
+# 기업 회원 탈퇴
+@router.delete("/{company_user_id}")
+async def delete_companyuser(
+        company_user_id: int,
+        current_company_user: CompanyUser = Depends(get_current_company_user),
+        db: AsyncSession = Depends(get_db_session),
+):
+    result = await delete_companyuser(db=db, company_user_id=company_user_id,current_user=current_company_user)
+    return result
