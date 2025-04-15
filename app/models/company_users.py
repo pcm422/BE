@@ -25,7 +25,7 @@ class CompanyUser(Base):
     )  # 수정 날짜
 
     job_postings = relationship("JobPosting", back_populates="author")
-    company = relationship("CompanyInfo", back_populates="company_users")
+    company = relationship("CompanyInfo", back_populates="company_users",lazy="selectin")
 
     def __str__(self):
         return self.email
