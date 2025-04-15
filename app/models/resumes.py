@@ -27,6 +27,7 @@ class Resume(Base):
         "ResumeEducation",
         back_populates="resume",
         cascade="all, delete-orphan",
+        lazy="selectin",
         passive_deletes=True,
     )
 
