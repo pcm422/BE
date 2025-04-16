@@ -3,16 +3,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.company_users.schemas import (
-    CompanyUserRequest,
-    CompanyUserUpdateRequest,
-)
-from app.domains.company_users.utiles import (
-    check_business_number_valid,
-    hash_password,
-    verify_password,
-)
+                                               CompanyUserRequest,
+                                               CompanyUserUpdateRequest, FindCompanyUserEmail, ResetCompanyUserPassword)
+from app.domains.company_users.utiles import (check_business_number_valid,
+                                              hash_password, verify_password)
 from app.domains.users.service import create_access_token, create_refresh_token
 from app.models import CompanyInfo, CompanyUser
+
 
 # 공통 응답 포맷 함수
 def success_response(message: str, data):
@@ -21,6 +18,7 @@ def success_response(message: str, data):
         "message": message,
         "data": data,
     }
+
 
 # 사업자 등록번호 중복 확인
 async def check_dupl_business_number(db: AsyncSession, business_reg_number: str):
@@ -127,16 +125,19 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
     access_token = await create_access_token(data={"sub": company_user.email})
     refresh_token = await create_refresh_token(data={"sub": company_user.email})
 
-    return success_response("로그인이 완료되었습니다.", {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "company_user": {
-            "company_user_id": company_user.id,
-            "email": company_user.email,
-            "cem_name": company_user.manager_name,
-        }
-    })
+    return success_response(
+        "로그인이 완료되었습니다.",
+        {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "company_user": {
+                "company_user_id": company_user.id,
+                "email": company_user.email,
+                "cem_name": company_user.manager_name,
+            },
+        },
+    )
 
 
 # 기업 회원 정보 조회(마이페이지)
@@ -152,25 +153,33 @@ async def get_company_user_mypage(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="해당 기업 정보를 찾을 수 없습니다.",
         )
-    return success_response("기업 회원 정보 조회 성공",{
-        "company_info": {
-            "company_user": current_user.company.company_name,  # 기업이름
+    return success_response(
+        "기업 회원 정보 조회 성공",
+        {
+            "company_user_id": current_user.company.id,  # 기업 회원 고유 ID
+            "email": current_user.email,  # 기업 계정 이메일
             "manager_name": current_user.manager_name,  # 담당자이름
             "manager_email": current_user.manager_email,  # 담당자이메일
             "manager_phone": current_user.manager_phone,  # 담당자 전화번호
-            "company_intro": current_user.company.company_intro,  # 기업소개
+            "company": {
+                "company_name": current_user.company.company_name,  # 기업이름
+                "company_intro": current_user.company.company_intro,  # 기업소개
+                "business_reg_number": current_user.company.business_reg_number,
+                "opening_date": current_user.company.opening_date,
+                "ceo_name": current_user.company.ceo_name,
+            },
+            "jop_postings": [  # 등록된 공고리스트
+                {
+                    "id": job_posting.id,
+                    "title": job_posting.title,
+                    "work_address": job_posting.work_address,
+                    "deadline_at": job_posting.deadline_at,
+                    "is_always_recruiting": job_posting.is_always_recruiting,
+                }
+                for job_posting in current_user.job_postings
+            ],
         },
-        "jop_postings": [  # 등록된 공고리스트
-            {
-                "id": job_posting.id,
-                "title": job_posting.title,
-                "work_address": job_posting.work_address,
-                "deadline_at": job_posting.deadline_at,
-                "is_always_recruiting": job_posting.is_always_recruiting,
-            }
-            for job_posting in current_user.job_postings
-        ],
-    })
+    )
 
 
 # 기업 회원 정보수정
@@ -190,6 +199,9 @@ async def update_company_user(
         current_user.company_intro = payload.company_intro
     if payload.address:
         current_user.address = payload.address
+    # 비밀 번호 수정
+    if payload.password:
+        current_user.password = hash_password(payload.password)
     # 담당자 정보 수정
     if payload.manager_phone:
         current_user.manager_phone = payload.manager_phone
@@ -200,7 +212,7 @@ async def update_company_user(
 
     await db.commit()
     await db.refresh(current_user)
-    return success_response("기업 정보가 수정되었습니다.",current_user)
+    return success_response("기업 정보가 수정되었습니다.", current_user)
 
 
 # 기업 회원 탈퇴
@@ -220,3 +232,60 @@ async def delete_company_user(
     if company_user_id:
         await db.delete(select(CompanyUser).filter_by(id=company_user_id))
     return {"status": "success", "message": "회원 탈퇴가 정상적으로 처리 되었습니다."}
+
+
+# 기업회원 아이디(이메일) 찾기
+async def find_company_user_email(db: AsyncSession, payload: FindCompanyUserEmail):
+    result = await db.execute(
+        select(CompanyUser)
+        .join(CompanyInfo)
+        .where(
+            CompanyInfo.ceo_name == payload.ceo_name,
+            CompanyInfo.opening_date == payload.opening_date,
+            CompanyInfo.business_reg_number == payload.business_reg_number,
+            CompanyUser.company_id == CompanyInfo.id,
+        )
+    )
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="일치하는 기업 회원을 찾을 수 없습니다.",
+        )
+    return success_response("이메일이 조회되었습니다.", {"email": user.email})
+
+
+# 기업회원 비밀번호 재설정
+async def reset_company_user_password(
+        db: AsyncSession,
+        payload : ResetCompanyUserPassword
+):
+    result = await db.execute(
+        select(CompanyUser)
+        .join(CompanyInfo)
+        .where(
+            CompanyInfo.ceo_name == payload.ceo_name,
+            CompanyInfo.opening_date == payload.opening_date,
+            CompanyInfo.business_reg_number == payload.business_reg_number,
+            CompanyUser.email == payload.email,
+            CompanyUser.company_id == CompanyInfo.id
+        )
+    )
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="일치하는 기업 회원을 찾을 수 없습니다."
+        )
+    if payload.new_password != payload.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="비밀번호가 일치하지 않습니다."
+        )
+    user.password = hash_password(payload.new_password)
+
+
+    await db.commit()
+    await db.refresh(user)
+    return {"status": "success", "message": "비밀번호가 재설정 되었습니다."}
