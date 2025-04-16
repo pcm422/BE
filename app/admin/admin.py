@@ -183,7 +183,7 @@ class JobPostingAdmin(BaseAdmin, model=JobPosting):
         "deadline_at": "마감일",
         "work_days": "근무요일/스케줄",
         "description": "공고상세내용",
-        "posings_image": "공고이미지",
+        "postings_image": "공고이미지",
         "created_at": "작성일",
         "updated_at": "수정일",
         "author": "작성자",

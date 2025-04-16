@@ -92,7 +92,7 @@ class JobPosting(Base):
     deadline_at = Column(Date, nullable=False)
     work_days = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
-    posings_image = Column(String(255), nullable=False)
+    postings_image = Column(String(255), nullable=False)
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

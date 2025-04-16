@@ -31,7 +31,7 @@ class JobPostingBase(BaseModel):
     deadline_at: date | None = None
     work_days: str | None = None
     description: str | None = None
-    posings_image: str | None = None
+    postings_image: str | None = None
 
 
 class JobPostingCreate(JobPostingBase):
@@ -52,7 +52,7 @@ class JobPostingCreate(JobPostingBase):
     deadline_at: date
     work_days: str
     description: str
-    posings_image: str
+    postings_image: str
 
     @model_validator(mode='after')
     def validate_dates(self) -> 'JobPostingCreate':
