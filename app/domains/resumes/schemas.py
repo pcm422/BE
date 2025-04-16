@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import date, datetime
 
@@ -10,8 +10,7 @@ class EducationBase(BaseModel):  # 모든 학력사항 공통 속성
     start_date: Optional[date] = None  # 입학일, 선택적 필드, 기본값은 None
     end_date: Optional[date] = None  # 졸업(예정)일, 선택적 필드
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class EducationCreate(EducationBase):  # EducationBase 상속
     resumes_id: Optional[int] = None
