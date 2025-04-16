@@ -43,3 +43,15 @@ class CompanyUserUpdateRequest(BaseModel):
     manager_name: Optional[str]
     manager_phone: Optional[str]
     manager_email: Optional[str]
+
+# 아이디 찾기
+class FindCompanyUserEmail(BaseModel):
+    business_reg_number: str
+    opening_date: date
+    ceo_name: str
+
+# 비밀번호 재설정
+class ResetCompanyUserPassword(FindCompanyUserEmail):
+    email: EmailStr
+    new_password: str
+    confirm_password: str
