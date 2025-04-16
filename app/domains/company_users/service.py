@@ -2,9 +2,10 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.company_users.schemas import (
-                                               CompanyUserRequest,
-                                               CompanyUserUpdateRequest, FindCompanyUserEmail, ResetCompanyUserPassword)
+from app.domains.company_users.schemas import (CompanyUserRequest,
+                                               CompanyUserUpdateRequest,
+                                               FindCompanyUserEmail,
+                                               ResetCompanyUserPassword)
 from app.domains.company_users.utiles import (check_business_number_valid,
                                               hash_password, verify_password)
 from app.domains.users.service import create_access_token, create_refresh_token
@@ -29,7 +30,7 @@ async def check_dupl_business_number(db: AsyncSession, business_reg_number: str)
     if company_reg_no:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"이미 등록된 사업자등록번호입니다."},
+            detail="이미 등록된 사업자등록번호입니다.",
         )
 
 
@@ -40,7 +41,7 @@ async def check_dupl_email(db: AsyncSession, email: str):
     if company_user_email:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"이미 가입된 이메일입니다."},
+            detail="이미 가입된 이메일입니다.",
         )
 
 
@@ -97,7 +98,14 @@ async def register_company_user(db: AsyncSession, payload: CompanyUserRequest):
         # 기업 유저(담당자) 정보 저장
         company_user = await create_company_user(db, payload, company_info.id)
 
-        return success_response("회원가입이 완료되었습니다.", company_user)
+        return success_response(
+            "회원가입이 완료되었습니다.",
+            {
+                "company_user_id": company_user.id,
+                "company_email": company_user.email,
+                "company_name": company_info.company_name,
+            },
+        )
 
     except Exception as e:
         await db.rollback()
@@ -134,7 +142,7 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
             "company_user": {
                 "company_user_id": company_user.id,
                 "email": company_user.email,
-                "cem_name": company_user.manager_name,
+                "company_name": company_user.company.company_name,
             },
         },
     )
@@ -229,8 +237,6 @@ async def delete_company_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="회원 정보가 없습니다."
         )
-    if company_user_id:
-        await db.delete(select(CompanyUser).filter_by(id=company_user_id))
     return {"status": "success", "message": "회원 탈퇴가 정상적으로 처리 되었습니다."}
 
 
@@ -258,8 +264,7 @@ async def find_company_user_email(db: AsyncSession, payload: FindCompanyUserEmai
 
 # 기업회원 비밀번호 재설정
 async def reset_company_user_password(
-        db: AsyncSession,
-        payload : ResetCompanyUserPassword
+    db: AsyncSession, payload: ResetCompanyUserPassword
 ):
     result = await db.execute(
         select(CompanyUser)
@@ -269,22 +274,21 @@ async def reset_company_user_password(
             CompanyInfo.opening_date == payload.opening_date,
             CompanyInfo.business_reg_number == payload.business_reg_number,
             CompanyUser.email == payload.email,
-            CompanyUser.company_id == CompanyInfo.id
+            CompanyUser.company_id == CompanyInfo.id,
         )
     )
     user = result.scalars().first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="일치하는 기업 회원을 찾을 수 없습니다."
+            detail="일치하는 기업 회원을 찾을 수 없습니다.",
         )
     if payload.new_password != payload.confirm_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="비밀번호가 일치하지 않습니다."
+            detail="비밀번호가 일치하지 않습니다.",
         )
     user.password = hash_password(payload.new_password)
-
 
     await db.commit()
     await db.refresh(user)

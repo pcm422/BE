@@ -6,13 +6,17 @@ from app.core.utils import get_current_company_user
 from app.domains.company_users.schemas import (BRNValidationRequest,
                                                CompanyUserLoginRequest,
                                                CompanyUserRequest,
-                                               CompanyUserUpdateRequest, FindCompanyUserEmail, ResetCompanyUserPassword)
-from app.domains.company_users.service import (get_company_user_mypage,
+                                               CompanyUserUpdateRequest,
+                                               FindCompanyUserEmail,
+                                               ResetCompanyUserPassword)
+from app.domains.company_users.service import (delete_company_user,
+                                               find_company_user_email,
+                                               get_company_user_mypage,
                                                login_company_user,
                                                register_company_user,
+                                               reset_company_user_password,
                                                success_response,
-                                               update_company_user, find_company_user_email,
-                                               reset_company_user_password, delete_company_user)
+                                               update_company_user)
 from app.domains.company_users.utiles import check_business_number_valid
 from app.models import CompanyUser
 
@@ -114,10 +118,11 @@ async def find_email_companyuser(
 ):
     return await find_company_user_email(db=db, payload=payload)
 
+
 # 기업 회원 비밀번호 재설정
 @router.post("/reset-password")
 async def reset_password_companyuser(
-        payload: ResetCompanyUserPassword,
-        db: AsyncSession = Depends(get_db_session),
+    payload: ResetCompanyUserPassword,
+    db: AsyncSession = Depends(get_db_session),
 ):
     return await reset_company_user_password(db=db, payload=payload)
