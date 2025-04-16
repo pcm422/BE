@@ -14,7 +14,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     # Gunicorn 실행 커맨드
-    command: poetry run gunicorn -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:8000 app.main:app
+    command: poetry run gunicorn -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:8000 --proxy-headers --forwarded-allow-ips='*' app.main:app
     # 로컬과 달리 코드 볼륨 마운트는 하지 않음 (이미지 사용)
     # 정적/미디어 파일 볼륨 (Nginx와 공유해야 함)
     volumes:
