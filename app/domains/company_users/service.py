@@ -29,7 +29,7 @@ async def check_dupl_business_number(db: AsyncSession, business_reg_number: str)
     if company_reg_no:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"이미 등록된 사업자등록번호입니다."},
+            detail="이미 등록된 사업자등록번호입니다.",
         )
 
 
@@ -40,7 +40,7 @@ async def check_dupl_email(db: AsyncSession, email: str):
     if company_user_email:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"이미 가입된 이메일입니다."},
+            detail="이미 가입된 이메일입니다.",
         )
 
 
@@ -97,7 +97,10 @@ async def register_company_user(db: AsyncSession, payload: CompanyUserRequest):
         # 기업 유저(담당자) 정보 저장
         company_user = await create_company_user(db, payload, company_info.id)
 
-        return success_response("회원가입이 완료되었습니다.", company_user)
+        return success_response("회원가입이 완료되었습니다.",
+                                {"company_user_id": company_user.id,
+                                 "company_email": company_user.email,
+                                 "company_name":company_info.company_name})
 
     except Exception as e:
         await db.rollback()
@@ -134,7 +137,7 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
             "company_user": {
                 "company_user_id": company_user.id,
                 "email": company_user.email,
-                "cem_name": company_user.manager_name,
+                "company_name":company_user.company.company_name,
             },
         },
     )
@@ -229,8 +232,6 @@ async def delete_company_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="회원 정보가 없습니다."
         )
-    if company_user_id:
-        await db.delete(select(CompanyUser).filter_by(id=company_user_id))
     return {"status": "success", "message": "회원 탈퇴가 정상적으로 처리 되었습니다."}
 
 
