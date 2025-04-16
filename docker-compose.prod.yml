@@ -13,6 +13,8 @@ services:
       - .env.prod # 서버용 환경 변수 파일 로드
     environment:
       - PYTHONUNBUFFERED=1
+      - UVICORN_PROXY_HEADERS=true
+      - UVICORN_FORWARDED_ALLOW_IPS=*
     # Gunicorn 실행 커맨드
     command: poetry run gunicorn -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:8000 --proxy-headers --forwarded-allow-ips='*' app.main:app
     # 로컬과 달리 코드 볼륨 마운트는 하지 않음 (이미지 사용)
