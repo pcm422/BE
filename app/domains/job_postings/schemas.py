@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
-from fastapi import UploadFile, Form, File
+from fastapi import Form
 from typing import Optional
 import json
 
@@ -156,20 +156,20 @@ class JobPostingCreateWithImage(BaseModel):
     recruit_period_start: Optional[date] = None
     recruit_period_end: Optional[date] = None
     is_always_recruiting: bool = False
-    education: Optional[str] = None
-    recruit_number: Optional[str] = None
+    education: Optional[EducationEnum] = None
+    recruit_number: Optional[int] = None
     benefits: Optional[str] = None
     preferred_conditions: Optional[str] = None
     other_conditions: Optional[str] = None
     work_address: Optional[str] = None
     work_place_name: Optional[str] = None
-    payment_method: Optional[str] = None
-    job_category: Optional[str] = None
-    work_duration: Optional[str] = None
+    payment_method: Optional[PaymentMethodEnum] = None
+    job_category: Optional[JobCategoryEnum] = None
+    work_duration: Optional[WorkDurationEnum] = None
     career: Optional[str] = None
     employment_type: Optional[str] = None
-    salary: Optional[str] = None
-    deadline_at: Optional[datetime] = None
+    salary: Optional[int] = None
+    deadline_at: Optional[date] = None
     work_days: Optional[str] = None
     description: Optional[str] = None
     
@@ -177,8 +177,6 @@ class JobPostingCreateWithImage(BaseModel):
     def as_form(
         cls,
         title: str = Form(..., description="채용공고 제목"),
-        author_id: int = Form(..., description="작성자 ID"),
-        company_id: int = Form(..., description="회사 ID"),
         recruit_period_start: Optional[str] = Form(None, description="모집 시작일 (YYYY-MM-DD)"),
         recruit_period_end: Optional[str] = Form(None, description="모집 종료일 (YYYY-MM-DD)"),
         is_always_recruiting: bool = Form(False, description="상시 모집 여부"),
@@ -199,31 +197,122 @@ class JobPostingCreateWithImage(BaseModel):
         work_days: Optional[str] = Form(None, description="근무 요일/스케줄"),
         description: Optional[str] = Form(None, description="상세 설명"),
     ):
-        # 문자열 날짜를 date 객체로 변환
-        start_date = date.fromisoformat(recruit_period_start) if recruit_period_start else None
-        end_date = date.fromisoformat(recruit_period_end) if recruit_period_end else None
-        deadline = datetime.fromisoformat(deadline_at) if deadline_at else None
+        # 문자열 날짜를 date 객체로 변환 (예외 처리 추가)
+        start_date = None
+        end_date = None
+        deadline = None
         
+        try:
+            if recruit_period_start:
+                start_date = date.fromisoformat(recruit_period_start)
+        except ValueError:
+            raise ValueError("모집 시작일 형식이 올바르지 않습니다 (YYYY-MM-DD)")
+            
+        try:
+            if recruit_period_end:
+                end_date = date.fromisoformat(recruit_period_end)
+        except ValueError:
+            raise ValueError("모집 종료일 형식이 올바르지 않습니다 (YYYY-MM-DD)")
+            
+        try:
+            if deadline_at:
+                deadline = date.fromisoformat(deadline_at)
+        except ValueError:
+            raise ValueError("마감일 형식이 올바르지 않습니다 (YYYY-MM-DD)")
+        
+        # 문자열을 적절한 타입으로 변환
+        recruit_number_int = None
+        if recruit_number:
+            try:
+                recruit_number_int = int(recruit_number)
+            except ValueError:
+                raise ValueError("모집 인원은 숫자여야 합니다")
+        
+        salary_int = None
+        if salary:
+            try:
+                salary_int = int(salary)
+                if salary_int < 0:
+                    raise ValueError("급여는 0 이상이어야 합니다")
+            except ValueError as e:
+                if "급여는 0 이상이어야 합니다" in str(e):
+                    raise e
+                raise ValueError("급여는 숫자여야 합니다")
+        
+        # Enum 변환
+        education_enum = None
+        if education:
+            try:
+                education_enum = EducationEnum[education]
+            except KeyError:
+                # 값이 Enum 값과 일치하는 경우 (enum.value)
+                for enum_member in EducationEnum:
+                    if enum_member.value == education:
+                        education_enum = enum_member
+                        break
+                else:
+                    raise ValueError(f"유효하지 않은 학력 값: {education}")
+        
+        payment_method_enum = None
+        if payment_method:
+            try:
+                payment_method_enum = PaymentMethodEnum[payment_method]
+            except KeyError:
+                # 값이 Enum 값과 일치하는 경우 (enum.value)
+                for enum_member in PaymentMethodEnum:
+                    if enum_member.value == payment_method:
+                        payment_method_enum = enum_member
+                        break
+                else:
+                    raise ValueError(f"유효하지 않은 지불 방식 값: {payment_method}")
+        
+        job_category_enum = None
+        if job_category:
+            try:
+                job_category_enum = JobCategoryEnum[job_category]
+            except KeyError:
+                # 값이 Enum 값과 일치하는 경우 (enum.value)
+                for enum_member in JobCategoryEnum:
+                    if enum_member.value == job_category:
+                        job_category_enum = enum_member
+                        break
+                else:
+                    raise ValueError(f"유효하지 않은 직종 카테고리 값: {job_category}")
+        
+        work_duration_enum = None
+        if work_duration:
+            try:
+                work_duration_enum = WorkDurationEnum[work_duration]
+            except KeyError:
+                # 값이 Enum 값과 일치하는 경우 (enum.value)
+                for enum_member in WorkDurationEnum:
+                    if enum_member.value == work_duration:
+                        work_duration_enum = enum_member
+                        break
+                else:
+                    raise ValueError(f"유효하지 않은 근무 기간 값: {work_duration}")
+        
+        # author_id와 company_id는 라우터에서 current_user로부터 설정되므로 0으로 임시 설정
         return cls(
             title=title,
-            author_id=author_id,
-            company_id=company_id,
+            author_id=0,  # 임시값, 라우터에서 덮어씀
+            company_id=0,  # 임시값, 라우터에서 덮어씀
             recruit_period_start=start_date,
             recruit_period_end=end_date,
             is_always_recruiting=is_always_recruiting,
-            education=education,
-            recruit_number=recruit_number,
+            education=education_enum,
+            recruit_number=recruit_number_int,
             benefits=benefits,
             preferred_conditions=preferred_conditions,
             other_conditions=other_conditions,
             work_address=work_address,
             work_place_name=work_place_name,
-            payment_method=payment_method,
-            job_category=job_category,
-            work_duration=work_duration,
+            payment_method=payment_method_enum,
+            job_category=job_category_enum,
+            work_duration=work_duration_enum,
             career=career,
             employment_type=employment_type,
-            salary=salary,
+            salary=salary_int,
             deadline_at=deadline,
             work_days=work_days,
             description=description,

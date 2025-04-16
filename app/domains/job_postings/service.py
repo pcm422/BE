@@ -13,69 +13,17 @@ async def create_job_posting(
 ) -> JobPosting:
     # 이미지 업로드 (있을 경우)
     image_url = None
-    if image_file:
-        image_url = await upload_image_to_ncp(image_file, folder="job_postings")
+    try:
+        if image_file:
+            image_url = await upload_image_to_ncp(image_file, folder="job_postings")
+    except Exception as e:
+        # 이미지 업로드 실패 시 로깅 및 계속 진행 (이미지 없이)
+        print(f"이미지 업로드 실패: {e}")
     
     # data에서 author_id와 company_id를 제외한 데이터 추출
     data_dict = data.model_dump(exclude={"author_id", "company_id"})
     
-    # 문자열 필드를 적절한 타입으로 변환
-    if "recruit_number" in data_dict and data_dict["recruit_number"] is not None:
-        try:
-            data_dict["recruit_number"] = int(data_dict["recruit_number"])
-        except (ValueError, TypeError):
-            data_dict["recruit_number"] = 0  # 변환 불가능한 경우 기본값 설정
-    
-    if "salary" in data_dict and data_dict["salary"] is not None:
-        try:
-            data_dict["salary"] = int(data_dict["salary"])
-        except (ValueError, TypeError):
-            data_dict["salary"] = 0  # 변환 불가능한 경우 기본값 설정
-    
-    # Enum 타입에 대한 처리 (문자열을 실제 Enum 값으로 변환)
-    from app.models.job_postings import JobCategoryEnum, WorkDurationEnum, EducationEnum, PaymentMethodEnum
-    
-    # 각 Enum 필드 처리
-    enum_mappings = {
-        "education": EducationEnum,
-        "payment_method": PaymentMethodEnum,
-        "job_category": JobCategoryEnum,
-        "work_duration": WorkDurationEnum
-    }
-    
-    for field, enum_class in enum_mappings.items():
-        if field in data_dict and data_dict[field] is not None:
-            # 문자열 값이 Enum에 존재하는지 확인
-            try:
-                # 값이 Enum 멤버 이름과 일치하는 경우 (enum.name)
-                data_dict[field] = enum_class[data_dict[field]]
-            except (KeyError, ValueError):
-                try:
-                    # 값이 Enum 값과 일치하는 경우 (enum.value)
-                    for enum_member in enum_class:
-                        if enum_member.value == data_dict[field]:
-                            data_dict[field] = enum_member
-                            break
-                    else:  # for-else 구문: for 루프가 break 없이 끝나면 실행
-                        # 일치하는 Enum 값을 찾지 못한 경우
-                        print(f"Warning: Invalid {field} value: {data_dict[field]}")
-                        data_dict[field] = list(enum_class)[0]  # 첫 번째 값으로 기본 설정
-                except Exception as e:
-                    print(f"Error converting {field}: {e}")
-                    data_dict[field] = list(enum_class)[0]  # 첫 번째 값으로 기본 설정
-    
-    # 날짜 형식 확인 및 처리 (이미 처리되어 있을 수 있음)
-    date_fields = ["recruit_period_start", "recruit_period_end", "deadline_at"]
-    for field in date_fields:
-        if field in data_dict and isinstance(data_dict[field], str):
-            try:
-                from datetime import datetime
-                data_dict[field] = datetime.fromisoformat(data_dict[field]).date()
-            except (ValueError, TypeError) as e:
-                print(f"Error converting date field {field}: {e}")
-                data_dict[field] = None
-    
-    # 새 JobPosting 객체 생성
+    # 새 JobPosting 객체 생성 (이미 모든 형변환은 스키마에서 처리됨)
     job_posting = JobPosting(
         **data_dict, 
         author_id=author_id, 
@@ -83,34 +31,21 @@ async def create_job_posting(
         posings_image=image_url
     )
     
-    session.add(job_posting)
-    await session.commit()
-    await session.refresh(job_posting)
-    return job_posting
+    try:
+        session.add(job_posting)
+        await session.commit()
+        await session.refresh(job_posting)
+        return job_posting
+    except Exception as e:
+        await session.rollback()
+        raise e
 
 
 async def list_job_postings(
     session: AsyncSession, skip: int = 0, limit: int = 10
 ) -> tuple[list[JobPosting], int]:
-    # 목록 조회에 필요한 필드만 선택 (성능 최적화)
-    list_columns = [
-        JobPosting.id,
-        JobPosting.title,
-        JobPosting.job_category,
-        JobPosting.work_address,
-        JobPosting.salary,
-        JobPosting.recruit_period_start,
-        JobPosting.recruit_period_end,
-        JobPosting.deadline_at,
-        JobPosting.is_always_recruiting,
-        JobPosting.created_at,
-        JobPosting.updated_at,
-        JobPosting.author_id,
-        JobPosting.company_id,
-    ]
-    
-    # 검색 조건이 없는 기본 쿼리
-    base_query = select(*list_columns).select_from(JobPosting)
+    # ORM 객체를 직접 반환하도록 수정
+    base_query = select(JobPosting)
     
     # 카운트 쿼리 (위치 평가식을 사용하여 카운트)
     count_query = select(func.count(1)).select_from(JobPosting)
@@ -121,11 +56,11 @@ async def list_job_postings(
     # 정렬 및 페이지네이션 적용
     query = base_query.order_by(desc(JobPosting.created_at)).offset(skip).limit(limit)
     
-    # 최종 쿼리 실행
+    # 최종 쿼리 실행 - scalars()를 사용하여 ORM 객체 반환
     result = await session.execute(query)
     
-    # 결과 반환 (성능을 위해 목록 조회에 필요한 필드만 포함)
-    return list(result.all()), total_count
+    # 결과 반환 (JobPosting 객체 리스트)
+    return list(result.scalars().all()), total_count
 
 
 async def get_job_posting(
@@ -186,25 +121,8 @@ async def search_job_postings(
     limit: int = 10,
     sort: str = "latest"
 ) -> tuple[list[JobPosting], int]:
-    # 목록 조회에 필요한 필드만 선택 (성능 최적화)
-    list_columns = [
-        JobPosting.id,
-        JobPosting.title,
-        JobPosting.job_category,
-        JobPosting.work_address,
-        JobPosting.salary,
-        JobPosting.recruit_period_start,
-        JobPosting.recruit_period_end,
-        JobPosting.deadline_at,
-        JobPosting.is_always_recruiting,
-        JobPosting.created_at,
-        JobPosting.updated_at,
-        JobPosting.author_id,
-        JobPosting.company_id,
-    ]
-    
-    # 기본 쿼리
-    base_query = select(*list_columns).select_from(JobPosting)
+    # ORM 객체를 직접 반환하도록 수정
+    base_query = select(JobPosting)
     
     # 검색 조건 적용
     if keyword:
@@ -244,12 +162,12 @@ async def search_job_postings(
     skip = (page - 1) * limit
     base_query = base_query.offset(skip).limit(limit)
     
-    # 쿼리 실행
+    # 쿼리 실행 - scalars()를 사용하여 ORM 객체 반환
     result = await session.execute(base_query)
     total_count = await session.scalar(count_query)
     
-    # 결과 반환
-    return list(result.all()), total_count
+    # 결과 반환 (JobPosting 객체 리스트)
+    return list(result.scalars().all()), total_count
 
 
 async def get_popular_job_postings(
