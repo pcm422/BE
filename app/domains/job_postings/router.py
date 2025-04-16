@@ -1,14 +1,14 @@
-from typing import Any, Optional
+from typing import Any
 from enum import Enum
 
-from fastapi import APIRouter, Depends, Query, status, Form, UploadFile, File
+from fastapi import APIRouter, Depends, Query, status, UploadFile, File
 from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
 from app.core.utils import get_current_company_user
 from app.domains.job_postings import service
-from app.domains.job_postings.schemas import (JobPostingCreate,
+from app.domains.job_postings.schemas import (
                                               JobPostingResponse,
                                               JobPostingUpdate,
                                               PaginatedJobPostingResponse,
@@ -141,30 +141,9 @@ async def list_postings(
         session=session, skip=skip, limit=limit
     )
     
-    # 부분 필드를 포함하는 결과를 JobPostingResponse로 변환
-    posting_responses = []
-    for posting_tuple in postings:
-        # 튜플 형태의 결과를 딕셔너리로 변환
-        posting_dict = {
-            "id": posting_tuple[0],
-            "title": posting_tuple[1],
-            "job_category": posting_tuple[2],
-            "work_address": posting_tuple[3],
-            "salary": posting_tuple[4],
-            "recruit_period_start": posting_tuple[5],
-            "recruit_period_end": posting_tuple[6],
-            "deadline_at": posting_tuple[7],
-            "is_always_recruiting": posting_tuple[8],
-            "created_at": posting_tuple[9],
-            "updated_at": posting_tuple[10],
-            "author_id": posting_tuple[11],
-            "company_id": posting_tuple[12],
-        }
-        # 딕셔너리를 Pydantic 모델로 변환
-        posting_responses.append(JobPostingResponse.model_validate(posting_dict))
-    
+    # ORM 객체를 직접 반환
     return {
-        "items": posting_responses,
+        "items": postings,
         "total": total_count,
         "skip": skip,
         "limit": limit,
@@ -216,32 +195,43 @@ async def search_postings(
         sort=sort.value
     )
     
-    # 부분 필드를 포함하는 결과를 JobPostingResponse로 변환
-    posting_responses = []
-    for posting_tuple in postings:
-        # 튜플 형태의 결과를 딕셔너리로 변환
-        posting_dict = {
-            "id": posting_tuple[0],
-            "title": posting_tuple[1],
-            "job_category": posting_tuple[2],
-            "work_address": posting_tuple[3],
-            "salary": posting_tuple[4],
-            "recruit_period_start": posting_tuple[5],
-            "recruit_period_end": posting_tuple[6],
-            "deadline_at": posting_tuple[7],
-            "is_always_recruiting": posting_tuple[8],
-            "created_at": posting_tuple[9],
-            "updated_at": posting_tuple[10],
-            "author_id": posting_tuple[11],
-            "company_id": posting_tuple[12],
-        }
-        # 딕셔너리를 Pydantic 모델로 변환
-        posting_responses.append(JobPostingResponse.model_validate(posting_dict))
-    
+    # ORM 객체를 직접 반환
     return {
-        "items": posting_responses,
+        "items": postings,
         "total": total_count,
         "skip": (page - 1) * limit,
+        "limit": limit,
+    }
+
+
+@router.get(
+    "/popular",
+    response_model=PaginatedJobPostingResponse,
+    summary="인기 채용공고 목록 조회",
+    description="지원자 수가 많은 인기 채용공고를 조회합니다.",
+)
+async def list_popular_postings(
+    limit: int = Query(10, ge=1, le=100, description="가져올 레코드 수"),
+    session: AsyncSession = Depends(get_db_session)
+) -> dict[str, Any]:
+    """인기 채용공고 목록 조회 API
+    
+    Args:
+        limit: 가져올 레코드 수
+        session: DB 세션
+        
+    Returns:
+        인기 채용공고 목록 및 메타데이터
+    """
+    postings, total_count = await service.get_popular_job_postings(
+        session=session, limit=limit
+    )
+    
+    # JobPosting 객체를 그대로 반환 (Pydantic 모델에서 자동으로 변환)
+    return {
+        "items": postings,
+        "total": total_count,
+        "skip": 0,
         "limit": limit,
     }
 
