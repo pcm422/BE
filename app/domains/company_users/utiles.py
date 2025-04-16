@@ -2,7 +2,6 @@ import os
 
 import bcrypt
 import httpx
-import requests
 from dotenv import load_dotenv
 from fastapi import HTTPException, status
 
@@ -83,3 +82,33 @@ def hash_password(password: str) -> str:
 # 비밀번호 검증 (로그인시)
 def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+
+
+# 비밀번호 일치 확인
+def check_password_match(password: str, confirm_password: str) -> bool:
+    if confirm_password is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="비밀번호 확인이 필요합니다."
+        )
+    if password != confirm_password:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="비밀번호가 일치하지 않습니다."
+        )
+
+
+# 성공 응답 함수
+def success_response(message: str, data: dict = None, status_code: int = 200):
+    return {
+        "status": "success",
+        "message": message,
+        "data": data,
+    }
+
+
+# 실패 응답 함수
+def error_response(message: str, status_code: int = 400):
+    return {
+        "status": "error",
+        "message": message,
+        "status_code": status_code,
+    }
