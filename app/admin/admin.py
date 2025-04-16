@@ -14,7 +14,7 @@ from app.models.admin_users import AdminUser
 from app.admin.auth import AdminAuth
 from app.core.config import SECRET_KEY
 from app.models.users_interests import UserInterest
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 from app.core.db import AsyncSessionFactory
 from app.models.job_experience import ResumeExperience
@@ -46,30 +46,36 @@ class PasswordHashMixin:
         # 이미 해싱된 비밀번호인지 확인
         return password.startswith("$2b$") or password.startswith("$2a$")
 
+# 슈퍼유저 접근 권한 Mixin 클래스
+class SuperuserAccessMixin:
+    async def is_accessible(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_create_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_update_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
+    async def has_delete_permission(self, request) -> bool:
+        user = getattr(request.state, "user", None)
+        return user and user.is_superuser
+
 class BaseAdmin(ModelView):
+    # 선택적으로 로드할 관계 필드 목록 (기본값은 빈 리스트)
+    column_selectinload_list = []
+    
     async def insert_model(self, request, data):
         async with AsyncSessionFactory() as session:
             try:
-                # relationship 필드 분리
-                relation_data = {}
-                model_data = {}
-                for key, value in data.items():
-                    if hasattr(self.model, key) and hasattr(getattr(self.model, key), 'property'):
-                        relation_data[key] = value
-                    else:
-                        model_data[key] = value
-                
-                # 메인 객체 생성
-                obj = self.model(**model_data)
+                # 부모 클래스의 기본 insert_model 메서드를 활용하여 관계 처리 로직 단순화
+                obj = self.model(**data)
                 session.add(obj)
                 await session.commit()
                 await session.refresh(obj)
-                
-                # relationship 처리
-                for key, value in relation_data.items():
-                    setattr(obj, key, value)
-                
-                await session.commit()
                 return obj
             except Exception as e:
                 await session.rollback()
@@ -78,29 +84,18 @@ class BaseAdmin(ModelView):
     async def update_model(self, request, id, data):
         async with AsyncSessionFactory() as session:
             try:
-                # relationship을 포함한 쿼리
+                # 선택적으로 필요한 관계만 로드
                 stmt = select(self.model).where(self.model.id == id)
-                for rel in self.model.__mapper__.relationships:
-                    stmt = stmt.options(selectinload(rel.key))
+                
+                # 명시적으로 지정된 관계만 selectinload
+                for rel in self.column_selectinload_list:
+                    stmt = stmt.options(selectinload(rel))
                 
                 result = await session.execute(stmt)
                 obj = result.scalar_one()
                 
-                # relationship 필드 분리
-                relation_data = {}
-                model_data = {}
+                # 모든 필드를 한 번에 업데이트
                 for key, value in data.items():
-                    if hasattr(self.model, key) and hasattr(getattr(self.model, key), 'property'):
-                        relation_data[key] = value
-                    else:
-                        model_data[key] = value
-                
-                # 일반 필드 업데이트
-                for key, value in model_data.items():
-                    setattr(obj, key, value)
-                
-                # relationship 업데이트
-                for key, value in relation_data.items():
                     setattr(obj, key, value)
                 
                 await session.commit()
@@ -113,9 +108,10 @@ class BaseAdmin(ModelView):
     async def get_list(self):
         async with AsyncSessionFactory() as session:
             stmt = select(self.model)
-            # 모든 relationship을 eager loading
-            for rel in self.model.__mapper__.relationships:
-                stmt = stmt.options(selectinload(rel.key))
+            
+            # 명시적으로 지정된 관계만 selectinload
+            for rel in self.column_selectinload_list:
+                stmt = stmt.options(selectinload(rel))
             
             result = await session.execute(stmt)
             return result.scalars().all()
@@ -123,16 +119,20 @@ class BaseAdmin(ModelView):
     async def get_one(self, id):
         async with AsyncSessionFactory() as session:
             stmt = select(self.model).where(self.model.id == id)
-            # 모든 relationship을 eager loading
-            for rel in self.model.__mapper__.relationships:
-                stmt = stmt.options(selectinload(rel.key))
+            
+            # 명시적으로 지정된 관계만 selectinload
+            for rel in self.column_selectinload_list:
+                stmt = stmt.options(selectinload(rel))
             
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
-class UserAdmin(PasswordHashMixin, ModelView, model=User):
-    column_list = User.__table__.columns.keys()
+class UserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=User):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "name", "email", "phone_number", "is_active", "created_at"]
     column_searchable_list = ["name", "email"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [User.favorites, User.applications]
     name = "회원"
     name_plural = "회원 목록"
     column_labels = {
@@ -150,26 +150,13 @@ class UserAdmin(PasswordHashMixin, ModelView, model=User):
         "created_at": "가입일",
         "updated_at": "수정일"
     }
-    
-    async def is_accessible(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
 
-    async def has_create_permission(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-
-    async def has_update_permission(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-
-    async def has_delete_permission(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-
-class JobPostingAdmin(ModelView, model=JobPosting):
-    column_list = JobPosting.__table__.columns.keys()
+class JobPostingAdmin(BaseAdmin, model=JobPosting):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "title", "company_id", "recruit_period_start", "recruit_period_end", "job_category", "created_at"]
     column_searchable_list = ["title"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [JobPosting.author, JobPosting.company]
     name = "공고"
     name_plural = "공고 목록"
     column_labels = {
@@ -205,10 +192,12 @@ class JobPostingAdmin(ModelView, model=JobPosting):
         "applications": "지원 내역"
     }
     
-
-class FavoriteAdmin(ModelView, model=Favorite):
-    column_list = Favorite.__table__.columns.keys()
+class FavoriteAdmin(BaseAdmin, model=Favorite):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "user_id", "job_posting_id", "created_at"]
     column_searchable_list = ["user_id", "job_posting_id"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [Favorite.user, Favorite.job_posting]
     name = "즐겨찾기"
     name_plural = "즐겨찾기 목록"
     column_labels = {
@@ -220,9 +209,9 @@ class FavoriteAdmin(ModelView, model=Favorite):
         "job_posting": "공고"
     }
     
-
-class AdminUserAdmin(PasswordHashMixin, ModelView, model=AdminUser):
-    column_list = AdminUser.__table__.columns.keys()
+class AdminUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=AdminUser):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "username"]
     column_searchable_list = ["username"]
     name = "관리자"
     name_plural = "관리자 목록"
@@ -232,25 +221,12 @@ class AdminUserAdmin(PasswordHashMixin, ModelView, model=AdminUser):
         "password": "비밀번호"
     }
     
-    async def is_accessible(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-
-    async def has_create_permission(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-
-    async def has_update_permission(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-
-    async def has_delete_permission(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-    
-class CompanyInfoAdmin(ModelView, model=CompanyInfo):
-    column_list = CompanyInfo.__table__.columns.keys()
+class CompanyInfoAdmin(BaseAdmin, model=CompanyInfo):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "company_name", "business_reg_number", "ceo_name", "address"]
     column_searchable_list = ["company_name"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [CompanyInfo.job_postings, CompanyInfo.company_users]
     name = "기업 정보"
     name_plural = "기업 정보 목록"
     column_labels = {
@@ -266,9 +242,12 @@ class CompanyInfoAdmin(ModelView, model=CompanyInfo):
         "company_users": "담당자"
     }
     
-class CompanyUserAdmin(PasswordHashMixin, ModelView, model=CompanyUser):
-    column_list = CompanyUser.__table__.columns.keys()
+class CompanyUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=CompanyUser):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "company_id", "manager_name", "manager_email", "created_at"]
     column_searchable_list = ["manager_name"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [CompanyUser.company, CompanyUser.job_postings]
     name = "기업 담당자"
     name_plural = "기업 담당자 목록"
     column_labels = {
@@ -285,25 +264,12 @@ class CompanyUserAdmin(PasswordHashMixin, ModelView, model=CompanyUser):
         "job_postings": "작성한 공고"
     }
     
-    async def is_accessible(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-
-    async def has_create_permission(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-
-    async def has_update_permission(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-
-    async def has_delete_permission(self, request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user and user.is_superuser
-    
-class jobApplicationAdmin(ModelView, model=JobApplication):
-    column_list = JobApplication.__table__.columns.keys()
+class JobApplicationAdmin(BaseAdmin, model=JobApplication):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "user_id", "job_posting_id", "status", "created_at"]
     column_searchable_list = ["user_id", "job_posting_id"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [JobApplication.user, JobApplication.job_posting]
     name = "지원 내역"
     name_plural = "지원 내역 목록"
     column_labels = {
@@ -317,9 +283,12 @@ class jobApplicationAdmin(ModelView, model=JobApplication):
         "job_posting": "공고"
     }
     
-class ResumeAdmin(ModelView, model=Resume):
-    column_list = Resume.__table__.columns.keys()
+class ResumeAdmin(BaseAdmin, model=Resume):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "user_id", "company_name", "position", "desired_area", "created_at"]
     column_searchable_list = ["company_name"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [Resume.user, Resume.educations]
     name = "이력서"
     name_plural = "이력서 목록"
     column_labels = {
@@ -338,9 +307,12 @@ class ResumeAdmin(ModelView, model=Resume):
         "educations": "학력"
     }
     
-class ResumeEducationAdmin(ModelView, model=ResumeEducation):
-    column_list = ResumeEducation.__table__.columns.keys()
+class ResumeEducationAdmin(BaseAdmin, model=ResumeEducation):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "resumes_id", "education_type", "school_name", "major", "education_status"]
     column_searchable_list = ["school_name"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [ResumeEducation.resume]
     name = "학력"
     name_plural = "학력 목록"
     column_labels = {
@@ -358,9 +330,12 @@ class ResumeEducationAdmin(ModelView, model=ResumeEducation):
         "updated_at": "수정일"
     }
     
-class ResumeExperienceAdmin(ModelView, model=ResumeExperience):
-    column_list = ResumeExperience.__table__.columns.keys()
+class ResumeExperienceAdmin(BaseAdmin, model=ResumeExperience):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "resume_id", "company_name", "position", "start_date", "end_date"]
     column_searchable_list = ["company_name", "position"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [ResumeExperience.resume]
     name = "경력사항"
     name_plural = "경력사항 목록"
     column_labels = {
@@ -376,9 +351,12 @@ class ResumeExperienceAdmin(ModelView, model=ResumeExperience):
         "resume": "이력서"
     }
     
-class InterestAdmin(ModelView, model=Interest):
-    column_list = Interest.__table__.columns.keys()
+class InterestAdmin(BaseAdmin, model=Interest):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "code", "name", "is_custom"]
     column_searchable_list = ["name"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [Interest.user_interests]
     name = "관심분야"
     name_plural = "관심분야 목록"
     column_labels = {
@@ -389,9 +367,12 @@ class InterestAdmin(ModelView, model=Interest):
         "user_interests": "회원 관심분야"
     }
     
-class UserInterestAdmin(ModelView, model=UserInterest):
-    column_list = UserInterest.__table__.columns.keys()
+class UserInterestAdmin(BaseAdmin, model=UserInterest):
+    # 필요한 핵심 컬럼만 표시
+    column_list = ["id", "user_id", "interest_id"]
     column_searchable_list = ["user_id", "interest_id"]
+    # 선택적 관계 로딩을 위한 설정
+    column_selectinload_list = [UserInterest.user, UserInterest.interest]
     name = "회원 관심분야"
     name_plural = "회원 관심분야 목록"
     column_labels = {
@@ -418,7 +399,7 @@ def setup_admin(app: FastAPI):
     admin.add_view(JobPostingAdmin)
     admin.add_view(FavoriteAdmin)
     admin.add_view(CompanyInfoAdmin)
-    admin.add_view(jobApplicationAdmin)
+    admin.add_view(JobApplicationAdmin)
     admin.add_view(ResumeAdmin)
     admin.add_view(ResumeEducationAdmin)
     admin.add_view(ResumeExperienceAdmin)
