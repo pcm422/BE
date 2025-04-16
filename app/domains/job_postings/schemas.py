@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from fastapi import UploadFile, Form, File
 from typing import Optional
 import json
@@ -99,9 +99,7 @@ class JobPostingResponse(JobPostingBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        orm_mode = True
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class JobPostingUpdate(JobPostingBase):

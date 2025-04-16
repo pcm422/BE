@@ -1,6 +1,6 @@
 from datetime import datetime  # 날짜/시간 처리를 위해 datetime 모듈 임포트
 
-from pydantic import BaseModel  # Pydantic의 BaseModel을 임포트합니다. 데이터 검증 및 직렬화에 사용
+from pydantic import BaseModel, ConfigDict  # Pydantic의 BaseModel을 임포트합니다. 데이터 검증 및 직렬화에 사용
 
 
 # 즐겨찾기 생성 요청 시 사용할 스키마
@@ -16,5 +16,4 @@ class FavoriteRead(BaseModel):
     created_at: datetime  # 즐겨찾기 생성 시각
     title: str  # 즐겨찾기에 추가된 채용공고의 제목
 
-    class Config:
-        orm_mode = True  # ORM 객체와의 호환성을 위해 orm_mode 설정
+    model_config = ConfigDict(from_attributes=True)
