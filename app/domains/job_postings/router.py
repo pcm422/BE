@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db_session
 from app.core.utils import get_current_company_user
 from app.domains.job_postings import service
-from app.domains.job_postings.schemas import (JobPostingCreate,
+from app.domains.job_postings.schemas import (
                                               JobPostingResponse,
                                               JobPostingUpdate,
                                               PaginatedJobPostingResponse,
@@ -242,6 +242,38 @@ async def search_postings(
         "items": posting_responses,
         "total": total_count,
         "skip": (page - 1) * limit,
+        "limit": limit,
+    }
+
+
+@router.get(
+    "/popular",
+    response_model=PaginatedJobPostingResponse,
+    summary="인기 채용공고 목록 조회",
+    description="지원자 수가 많은 인기 채용공고를 조회합니다.",
+)
+async def list_popular_postings(
+    limit: int = Query(10, ge=1, le=100, description="가져올 레코드 수"),
+    session: AsyncSession = Depends(get_db_session)
+) -> dict[str, Any]:
+    """인기 채용공고 목록 조회 API
+    
+    Args:
+        limit: 가져올 레코드 수
+        session: DB 세션
+        
+    Returns:
+        인기 채용공고 목록 및 메타데이터
+    """
+    postings, total_count = await service.get_popular_job_postings(
+        session=session, limit=limit
+    )
+    
+    # JobPosting 객체를 그대로 반환 (Pydantic 모델에서 자동으로 변환)
+    return {
+        "items": postings,
+        "total": total_count,
+        "skip": 0,
         "limit": limit,
     }
 

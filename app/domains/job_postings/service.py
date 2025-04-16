@@ -1,9 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func, desc
-from sqlalchemy.orm import selectinload
 
-from app.domains.job_postings.schemas import JobPostingCreate, JobPostingUpdate, JobPostingCreateWithImage
+from app.domains.job_postings.schemas import JobPostingUpdate, JobPostingCreateWithImage
 from app.models.job_postings import JobPosting
 from app.core.utils import upload_image_to_ncp
 from fastapi import UploadFile
@@ -251,3 +250,47 @@ async def search_job_postings(
     
     # 결과 반환
     return list(result.all()), total_count
+
+
+async def get_popular_job_postings(
+    session: AsyncSession, limit: int = 10
+) -> tuple[list[JobPosting], int]:
+    """
+    인기 채용 정보를 조회하는 함수
+    
+    지원자 수가 많은 순으로 채용 정보를 정렬하여 반환
+    
+    Args:
+        session: DB 세션
+        limit: 조회할 개수
+        
+    Returns:
+        인기 채용 정보(JobPosting 객체) 목록과 총 개수를 반환
+    """
+    from sqlalchemy import func, desc
+    from app.models.job_applications import JobApplication
+    
+    # 지원자 수를 계산하는 서브쿼리
+    applications_count = (
+        select(JobApplication.job_posting_id, func.count().label('app_count'))
+        .group_by(JobApplication.job_posting_id)
+        .alias('app_counts')
+    )
+    
+    # 채용공고 객체와 지원자 수를 조인하는 쿼리
+    base_query = (
+        select(JobPosting)
+        .outerjoin(applications_count, JobPosting.id == applications_count.c.job_posting_id)
+        .order_by(desc(applications_count.c.app_count), desc(JobPosting.created_at))
+        .limit(limit)
+    )
+    
+    # 총 채용공고 수 조회
+    count_query = select(func.count(1)).select_from(JobPosting)
+    total_count = await session.scalar(count_query)
+    
+    # 쿼리 실행 및 결과 반환
+    result = await session.execute(base_query)
+    postings = result.scalars().all()
+    
+    return list(postings), total_count
