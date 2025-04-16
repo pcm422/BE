@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBearer
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.admin.admin import setup_admin
 from app.core.config import ENVIRONMENT
@@ -58,3 +59,11 @@ app.include_router(social_router)
 
 app.include_router(company_users_router)
 app.include_router(resumes_router)
+
+class CSPMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
+        return response
+
+app.add_middleware(CSPMiddleware)
