@@ -107,7 +107,8 @@ async def upload_image_to_ncp(file: UploadFile, folder: str = "job_postings"):
         Bucket=NCP_BUCKET_NAME,
         Key=unique_filename,
         Body=contents,
-        ContentType=file.content_type
+        ContentType=file.content_type,
+        ACL="public-read"
     )
     
     # 업로드된 파일의 URL 생성
