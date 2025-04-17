@@ -23,6 +23,7 @@ class JobApplication(Base):
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     job_posting_id = Column(Integer, ForeignKey("job_postings.id"), nullable=False)
+    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False)
 
     status = Column(
         SQLAEnum(ApplicationStatusEnum, name="application_status_enum"),
@@ -39,10 +40,11 @@ class JobApplication(Base):
     # 관계
     user = relationship("User", back_populates="applications")
     job_posting = relationship("JobPosting", back_populates="applications")
+    resume = relationship("Resume", back_populates="applications")
 
     # 유저는 같은 공고에 중복 지원 못하게
     __table_args__ = (
-        UniqueConstraint("user_id", "job_posting_id", name="uq_user_jobposting"),
+        UniqueConstraint("resume_id", "job_posting_id", name="uq_resume_jobposting"),
     )
 
     def __str__(self):

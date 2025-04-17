@@ -39,5 +39,12 @@ class Resume(Base):
         passive_deletes=True
     )
 
+    applications = relationship(
+        "JobApplication",
+        back_populates="resume",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+
     def __str__(self):
         return f"{self.company_name or '이전 회사 없음'} ({self.position or '직무 없음'})"
