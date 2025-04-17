@@ -2,19 +2,12 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.company_users.schemas import (
-    CompanyUserBase,
-    CompanyUserUpdateRequest,
-    FindCompanyUserEmail,
-    ResetCompanyUserPassword,
-)
-from app.domains.company_users.utiles import (
-    check_business_number_valid,
-    check_password_match,
-    hash_password,
-    verify_password,
-)
-from app.domains.users.service import create_access_token, create_refresh_token
+from app.domains.company_users.schemas import (CompanyUserBase,
+                                               CompanyUserUpdateRequest,
+                                               FindCompanyUserEmail,
+                                               ResetCompanyUserPassword)
+from app.domains.company_users.utiles import (check_password_match,
+                                              hash_password, verify_password)
 from app.models import CompanyInfo, CompanyUser
 
 
@@ -76,13 +69,6 @@ async def create_company_user(
 
 # 기업 회원 가입
 async def register_company_user(db: AsyncSession, payload: CompanyUserBase):
-    # 국세청 진위확인 호출
-    await check_business_number_valid(
-        payload.business_reg_number,
-        payload.opening_date.strftime("%Y%m%d"),
-        payload.ceo_name,
-    )
-
     # 비밀번호 일치 확인
     check_password_match(payload.password, payload.confirm_password)
     # 중복 확인
@@ -98,7 +84,7 @@ async def register_company_user(db: AsyncSession, payload: CompanyUserBase):
 
         return company_user
 
-    except Exception as e:
+    except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -123,17 +109,9 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
 
 
 # 기업 회원 마이페이지 조회
-async def get_company_user_mypage(
-    db: AsyncSession, company_user_id: int, current_user: CompanyUser
-):
-    if current_user.id or current_user != company_user_id:
+async def get_company_user_mypage(company_user_id: int, current_user: CompanyUser):
+    if current_user.id != company_user_id:
         raise HTTPException(403, detail="접근 권한이 없습니다.")
-    if not current_user.id:
-        raise HTTPException(
-            status_code=404,
-            detail="해당 기업 정보를 찾을 수 없습니다.",
-        )
-
     result = {
         "company_user_id": current_user.id,  # 기업 회원 고유 ID
         "email": current_user.email,  # 기업 계정 이메일
@@ -148,7 +126,7 @@ async def get_company_user_mypage(
             "ceo_name": current_user.company.ceo_name,
         },
         # 공고 리스트
-        "jop_postings": [
+        "job_postings": [
             {
                 "id": job_posting.id,
                 "title": job_posting.title,
@@ -223,7 +201,7 @@ async def update_company_user(
             "company_name": current_user.company.company_name,
             "company_intro": current_user.company.company_intro,
             "business_reg_number": current_user.company.business_reg_number,
-            "opening_date": current_user.company.opening_date,
+            "opening_date": current_user.company.opening_date.isoformat(),
             "ceo_name": current_user.company.ceo_name,
             "address": current_user.company.address,
             "company_image": current_user.company.company_image,
@@ -233,14 +211,7 @@ async def update_company_user(
 
 
 # 기업 회원 탈퇴
-async def delete_company_user(
-    db: AsyncSession, company_user_id: int, current_user: CompanyUser
-):
-    if not current_user.id:
-        raise HTTPException(status_code=404, detail="회원 정보가 없습니다.")
-    if current_user.id != company_user_id:
-        raise HTTPException(status_code=403, detail="권한이 없습니다.")
-
+async def delete_company_user(db: AsyncSession, current_user: CompanyUser):
     company_info = current_user.company
     await db.delete(current_user)
     if company_info:
@@ -248,7 +219,7 @@ async def delete_company_user(
     await db.commit()
 
     deleted_company_user = {
-        "company_user_id": company_user_id,
+        "company_user_id": current_user.id,
         "company_name": company_info.company_name,
     }
     return deleted_company_user
@@ -306,4 +277,5 @@ async def reset_company_user_password(
 
     await db.commit()
     await db.refresh(user)
+
     return user.email
