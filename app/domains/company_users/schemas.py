@@ -1,28 +1,34 @@
 from datetime import date
-from typing import Generic, Optional, TypeVar
+from typing import Generic, List, Optional, TypeVar
 
-from pydantic import BaseModel, EmailStr, Field
-from pydantic.generics import GenericModel
-from typing_extensions import List
+from pydantic import (BaseModel, ConfigDict, EmailStr, Field, constr,
+                      field_validator)
 
 
 ### 기업 회원 공통 베이스
 class CompanyUserBase(BaseModel):
     email: EmailStr  # 로그인 이메일
-    manager_name: str  # 담당자 이름
-    manager_phone: str  # 담당자 전화 번호
+    manager_name: constr(min_length=1)  # 담당자 이름
+    manager_phone: constr(min_length=8, max_length=15)  # 담당자 전화 번호
     manager_email: EmailStr  # 담당자 이메일
-    company_name: str  # 기업명
-    ceo_name: str  # 대표자 성함
-    opening_date: date  # 개업 날짜 (YYYY-MM-DD)
-    business_reg_number: str  # 사업자등록번호
-    company_intro: str  # 기업 소개
+    company_name: constr(min_length=1)  # 기업명
+    ceo_name: constr(min_length=1)  # 대표자 성함
+    opening_date: str
+    business_reg_number: constr(min_length=10, max_length=12)
+    company_intro: constr(min_length=10)  # 기업 소개
+
+    @field_validator("manager_phone")
+    @classmethod
+    def validate_phone_format(cls, v):
+        if v is not None and not v.isdigit():
+            raise ValueError("담당자 전화번호는 숫자만 포함해야 합니다.")
+        return v
 
 
 ### 패스워드 확인용 믹스인
 class PasswordMixin(BaseModel):
-    password: str
-    confirm_password: str
+    password: constr(min_length=8)
+    confirm_password: constr(min_length=8)
 
 
 ### 기업 화원 가입 요청
@@ -38,11 +44,11 @@ class CompanyUserLoginRequest(BaseModel):
 
 ### 기업 회원 수정 요청 (선택필드)
 class CompanyUserUpdateRequest(BaseModel):
-    manager_name: Optional[str] = None
-    manager_phone: Optional[str] = None
+    manager_name: Optional[constr(min_length=1)] = None
+    manager_phone: Optional[constr(min_length=8, max_length=15)] = None
     manager_email: Optional[EmailStr] = None
-    password: Optional[str] = None
-    confirm_password: Optional[str] = None
+    password: Optional[constr(min_length=8)] = None
+    confirm_password: Optional[constr(min_length=8)] = None
     company_intro: Optional[str] = None
     address: Optional[str] = None
     company_image: Optional[str] = None
@@ -51,29 +57,22 @@ class CompanyUserUpdateRequest(BaseModel):
 ### 아이디 찾기 요청
 class FindCompanyUserEmail(BaseModel):
     business_reg_number: str
-    opening_date: date
+    opening_date: str
     ceo_name: str
 
 
 ### 비밀번호 재설정 요청
 class ResetCompanyUserPassword(FindCompanyUserEmail):
     email: EmailStr
-    new_password: str
-    confirm_password: str
-
-
-### 사업자등록번호 유효성 확인 요청
-class BRNValidationRequest(BaseModel):
-    business_reg_number: str
-    opening_date: str  # YYYYMMDD
-    ceo_name: str
+    new_password: constr(min_length=8)
+    confirm_password: constr(min_length=8)
 
 
 ### 성공 응답 스키마(Generic)
 T = TypeVar("T")
 
 
-class SuccessResponse(GenericModel, Generic[T]):
+class SuccessResponse(BaseModel, Generic[T]):
     status: str = "success"
     message: str
     data: Optional[T] = None
@@ -84,11 +83,12 @@ class CompanyInfoResponse(BaseModel):  # 기업 정보
     company_name: str
     company_intro: str
     business_reg_number: str
-    opening_date: date
+    opening_date: str
     ceo_name: str
+    address: Optional[str] = None
+    company_image: Optional[str] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class JobPostingsSummary(BaseModel):  # 공고 요약
@@ -98,8 +98,7 @@ class JobPostingsSummary(BaseModel):  # 공고 요약
     deadline_at: date
     is_always_recruiting: bool
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CompanyUserResponse(BaseModel):  # 기업 유저 정보
@@ -110,8 +109,7 @@ class CompanyUserResponse(BaseModel):  # 기업 유저 정보
     manager_phone: str
     company: CompanyInfoResponse
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CompanyUserLoginResponse(BaseModel):  # 로그인 응답
@@ -122,8 +120,7 @@ class CompanyUserLoginResponse(BaseModel):  # 로그인 응답
     access_token: str
     refresh_token: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CompanyUserInfo(CompanyUserResponse):
