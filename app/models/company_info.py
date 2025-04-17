@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, Integer, String, Text
+from sqlalchemy import Column,Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
@@ -14,7 +14,7 @@ class CompanyInfo(Base):
     business_reg_number = Column(
         String(50), unique=True, nullable=False
     )  # 사업자등록번호
-    opening_date = Column(Date, nullable=False)  # 개업 일자 (YYYY-MM-DD 형식)
+    opening_date = Column(String(10), nullable=False)  # 개업 일자
     company_intro = Column(Text, nullable=False)  # 기업 소개
     ceo_name = Column(String(50), nullable=False)  # 대표자 성함
     address = Column(String(100), nullable=True)  # 사업장 주소 (선택)
