@@ -28,7 +28,7 @@ async def create_job_posting(
         **data_dict, 
         author_id=author_id, 
         company_id=company_id, 
-        posings_image=image_url
+        postings_image=image_url
     )
     
     try:
