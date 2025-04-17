@@ -102,13 +102,13 @@ async def upload_image_to_ncp(file: UploadFile, folder: str = "job_postings"):
     # 파일 데이터 읽기
     contents = await file.read()
     
-    # 파일 업로드
+    # 파일 업로드 (ACL='public-read' 추가)
     s3_client.put_object(
         Bucket=NCP_BUCKET_NAME,
         Key=unique_filename,
         Body=contents,
         ContentType=file.content_type,
-        ACL="public-read"
+        ACL='public-read'
     )
     
     # 업로드된 파일의 URL 생성
