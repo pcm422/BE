@@ -58,8 +58,7 @@ async def register_companyuser(
             ceo_name=company_user.company.ceo_name,
         ),
     )
-    return success_response(
-        "회원가입이 완료 되었습니다.", data=user_data)
+    return success_response("회원가입이 완료 되었습니다.", data=user_data)
 
 
 # 로그인
