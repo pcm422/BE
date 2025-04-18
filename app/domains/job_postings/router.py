@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from enum import Enum
 
 from fastapi import APIRouter, Depends, Query, status, UploadFile, File
@@ -6,7 +6,7 @@ from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
-from app.core.utils import get_current_company_user
+from app.core.utils import get_current_company_user, get_current_user_optional
 from app.domains.job_postings import service
 from app.domains.job_postings.schemas import (
                                                 JobPostingResponse,
@@ -15,6 +15,7 @@ from app.domains.job_postings.schemas import (
                                                 JobPostingCreateFormData) # 스키마 임포트
 from app.models.company_users import CompanyUser
 from app.models.job_postings import JobPosting, JobCategoryEnum # 모델 임포트
+from app.models.users import User # User 모델 import 추가
 
 # 정렬 옵션 정의 Enum
 class SortOptions(str, Enum):
@@ -30,12 +31,11 @@ router = APIRouter(prefix="/posting", tags=["채용공고"])
 # --- Helper Functions (라우터 내부용) ---
 
 async def get_posting_or_404(
-    session: AsyncSession, job_posting_id: int
+    session: AsyncSession, job_posting_id: int, user_id: int | None = None
 ) -> JobPosting:
-    """ID로 채용공고를 조회하고 없으면 404 에러 발생시키는 헬퍼 함수"""
-    # 서비스 계층 함수 호출
-    posting = await service.get_job_posting(session, job_posting_id)
-    # 결과 없으면 404 예외 발생
+    """ID로 채용공고를 조회하고 없으면 404 에러 발생시키는 헬퍼 함수 (user_id 전달)"""
+    # 서비스 계층 함수 호출 시 user_id 전달
+    posting = await service.get_job_posting(session, job_posting_id, user_id=user_id)
     if not posting:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="채용공고를 찾을 수 없습니다.")
     return posting
@@ -95,23 +95,24 @@ async def create_job_posting(
 
 @router.get(
     "/",
-    response_model=PaginatedJobPostingResponse, # 페이지네이션 응답 형식
+    response_model=PaginatedJobPostingResponse,
     summary="채용공고 목록 조회",
-    description="채용공고 목록을 페이지네이션하여 조회합니다.",
+    description="채용공고 목록을 페이지네이션하여 조회합니다. 로그인 시 즐겨찾기 여부가 포함됩니다.",
 )
 async def list_postings(
-    # 의존성 주입: 쿼리 파라미터 (skip, limit), DB 세션
     skip: int = Query(0, ge=0, description="건너뛸 레코드 수"),
     limit: int = Query(10, ge=1, le=100, description="가져올 레코드 수"),
-    session: AsyncSession = Depends(get_db_session)
+    session: AsyncSession = Depends(get_db_session),
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ) -> PaginatedJobPostingResponse:
-    """채용공고 목록 조회 API 엔드포인트"""
-    # 서비스 계층 호출 (목록 및 전체 개수 가져오기)
+    """채용공고 목록 조회 API 엔드포인트 (즐겨찾기 포함)"""
+    user_id = current_user.id if current_user else None
+
     postings, total_count = await service.list_job_postings(
-        session=session, skip=skip, limit=limit
+        session=session, skip=skip, limit=limit, user_id=user_id
     )
 
-    # 페이지네이션 응답 객체 생성 및 반환
+    # 페이지네이션 응답 객체 생성 및 반환 (items의 각 요소가 is_favorited를 가짐)
     return PaginatedJobPostingResponse(
         items=postings,
         total=total_count,
@@ -122,86 +123,94 @@ async def list_postings(
 
 @router.get(
     "/search",
-    response_model=PaginatedJobPostingResponse, # 페이지네이션 응답 형식
+    response_model=PaginatedJobPostingResponse,
     summary="채용공고 검색",
-    description="키워드 및 필터 기반으로 채용공고를 검색합니다.",
+    description="키워드 및 필터 기반으로 채용공고를 검색합니다. 로그인 시 즐겨찾기 여부가 포함됩니다.",
 )
 async def search_postings(
-    # 의존성 주입: 검색 관련 쿼리 파라미터들, DB 세션
     keyword: str | None = Query(None, description="검색 키워드 (제목, 내용에서 검색)"),
     location: str | None = Query(None, description="근무지 위치"),
     job_category: JobCategoryEnum | None = Query(None, description="직무 카테고리"),
     employment_type: str | None = Query(None, description="고용 형태"),
     is_always_recruiting: bool | None = Query(None, description="상시 채용 여부"),
-    page: int = Query(1, ge=1, description="페이지 번호"), # 페이지 번호로 받음
+    page: int = Query(1, ge=1, description="페이지 번호"),
     limit: int = Query(10, ge=1, le=100, description="페이지당 결과 수"),
     sort: SortOptions = Query(SortOptions.LATEST, description="정렬 기준"),
-    session: AsyncSession = Depends(get_db_session)
+    session: AsyncSession = Depends(get_db_session),
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ) -> PaginatedJobPostingResponse:
-    """채용공고 검색 API 엔드포인트"""
-    # 서비스 계층 호출 (검색 로직 수행)
+    """채용공고 검색 API 엔드포인트 (즐겨찾기 포함)"""
+    user_id = current_user.id if current_user else None
+
     postings, total_count = await service.search_job_postings(
         session=session,
         keyword=keyword,
         location=location,
-        job_category=job_category.value if job_category else None, # Enum은 value 전달
+        job_category=job_category.value if job_category else None,
         employment_type=employment_type,
         is_always_recruiting=is_always_recruiting,
-        page=page, # page 번호 전달
+        page=page,
         limit=limit,
-        sort=sort.value # Enum은 value 전달
+        sort=sort.value,
+        user_id=user_id
     )
 
-    # 페이지네이션 응답 객체 생성 및 반환 (page -> skip 계산)
     return PaginatedJobPostingResponse(
         items=postings,
         total=total_count,
-        skip=(page - 1) * limit, # skip 값 계산
+        skip=(page - 1) * limit,
         limit=limit,
     )
 
 
 @router.get(
     "/popular",
-    response_model=PaginatedJobPostingResponse, # 페이지네이션 응답 형식
+    response_model=PaginatedJobPostingResponse,
     summary="인기 채용공고 목록 조회",
-    description="지원자 수가 많은 인기 채용공고를 조회합니다.",
+    description="지원자 수가 많은 인기 채용공고를 조회합니다. 로그인 시 즐겨찾기 여부가 포함됩니다.",
 )
 async def list_popular_postings(
-    # 의존성 주입: 쿼리 파라미터(limit), DB 세션
     limit: int = Query(10, ge=1, le=100, description="가져올 레코드 수"),
-    session: AsyncSession = Depends(get_db_session)
+    session: AsyncSession = Depends(get_db_session),
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ) -> PaginatedJobPostingResponse:
-    """인기 채용공고 목록 조회 API 엔드포인트"""
-    # 서비스 계층 호출 (인기 공고 조회 로직)
+    """인기 채용공고 목록 조회 API 엔드포인트 (즐겨찾기 포함)"""
+    user_id = current_user.id if current_user else None
+
     postings, total_count = await service.get_popular_job_postings(
-        session=session, limit=limit
+        session=session, limit=limit, user_id=user_id
     )
 
-    # 페이지네이션 응답 객체 생성 및 반환
-    # 참고: 이 경우 total_count는 전체 공고 수를 의미하므로 API 스펙 정의 필요
+    # total_count의 의미에 맞게 응답 구성 필요
     return PaginatedJobPostingResponse(
         items=postings,
-        total=total_count, # 서비스에서 반환된 전체 공고 수
-        skip=0, # 인기 목록은 skip 개념이 보통 없음
+        total=total_count,
+        skip=0,
         limit=limit,
     )
 
 
 @router.get(
-    "/{job_posting_id}", # 경로 파라미터로 공고 ID 받음
-    response_model=JobPostingResponse, # 단일 공고 응답 형식
+    "/{job_posting_id}",
+    response_model=JobPostingResponse,
     summary="채용공고 상세 조회",
-    description="특정 채용공고의 상세정보를 조회합니다.",
+    description="특정 채용공고의 상세정보를 조회합니다. 로그인 시 즐겨찾기 여부가 포함됩니다.",
 )
 async def get_posting(
-    # 의존성 주입: 경로 파라미터, DB 세션
-    job_posting_id: int, session: AsyncSession = Depends(get_db_session)
-) -> JobPosting: # 성공 시 ORM 객체 반환
-    """채용공고 상세 조회 API 엔드포인트"""
-    # 헬퍼 함수 사용하여 공고 조회 (없으면 404 발생)
-    posting = await get_posting_or_404(session, job_posting_id)
-    # 조회된 공고 반환
+    job_posting_id: int,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: Optional[User] = Depends(get_current_user_optional)
+) -> JobPosting:
+    user_id = current_user.id if current_user else None
+    # --- 디버깅 로그 추가 ---
+    print(f"[ROUTER get_posting] Current User: {current_user}")
+    print(f"[ROUTER get_posting] Extracted User ID: {user_id}")
+    # -----------------------
+    posting = await get_posting_or_404(session, job_posting_id, user_id=user_id)
+    # --- 디버깅 로그 추가 ---
+    is_favorited_value = getattr(posting, 'is_favorited', 'Attribute not found')
+    print(f"[ROUTER get_posting] Posting object received from service. is_favorited = {is_favorited_value}")
+    # -----------------------
     return posting
 
 

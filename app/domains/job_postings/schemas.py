@@ -1,6 +1,6 @@
 import enum
 from datetime import date, datetime
-from typing import Any, Type, TypeVar
+from typing import Any, Type, TypeVar, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator, Field
 from fastapi import Form, HTTPException, status
@@ -8,6 +8,7 @@ from typing import Optional
 
 from app.models.job_postings import (EducationEnum, JobCategoryEnum,
                                      PaymentMethodEnum, WorkDurationEnum)
+from app.models.users import User
 
 # Enum 타입 힌팅을 위한 TypeVar
 TEnum = TypeVar("TEnum", bound=enum.Enum)
@@ -165,7 +166,9 @@ class JobPostingResponse(JobPostingBase):
     company_id: int
     created_at: datetime
     updated_at: datetime
-    # model_config (from_attributes=True) 는 Base에서 상속받음
+    is_favorited: Optional[bool] = Field(None, description="현재 로그인한 사용자의 즐겨찾기 여부 (비로그인 시 null)")
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class JobPostingUpdate(JobPostingBase):
