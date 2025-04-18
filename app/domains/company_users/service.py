@@ -1,13 +1,20 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.domains.company_users.schemas import (CompanyUserBase,
-                                               CompanyUserUpdateRequest,
-                                               FindCompanyUserEmail,
-                                               ResetCompanyUserPassword)
-from app.domains.company_users.utiles import (check_password_match,
-                                              hash_password, verify_password)
+from app.domains.company_users.schemas import (
+    CompanyUserBase,
+    CompanyUserUpdateRequest,
+    CompanyUserUpdateResponse,
+    FindCompanyUserEmail,
+    ResetCompanyUserPassword,
+)
+from app.domains.company_users.utiles import (
+    check_password_match,
+    hash_password,
+    verify_password,
+)
 from app.models import CompanyInfo, CompanyUser
 
 
@@ -39,6 +46,9 @@ async def check_dupl_email(db: AsyncSession, email: str):
 async def create_company_info(db: AsyncSession, payload: CompanyUserBase):
     company_info = CompanyInfo(
         company_name=payload.company_name,
+        manager_name=payload.manager_name,
+        manager_phone=payload.manager_phone,
+        manager_email=str(payload.manager_email),
         ceo_name=payload.ceo_name,
         business_reg_number=payload.business_reg_number,
         opening_date=payload.opening_date,
@@ -57,9 +67,6 @@ async def create_company_user(
         email=str(payload.email),
         password=hash_password(payload.password),
         company_id=company_id,
-        manager_name=payload.manager_name,
-        manager_phone=payload.manager_phone,
-        manager_email=str(payload.manager_email),
     )
     db.add(company_user)
     await db.commit()
@@ -109,75 +116,31 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
 
 
 # 기업 회원 마이페이지 조회
-async def get_company_user_mypage(company_user_id: int, current_user: CompanyUser):
-    if current_user.id != company_user_id:
-        raise HTTPException(403, detail="접근 권한이 없습니다.")
-    result = {
-        "company_user_id": current_user.id,  # 기업 회원 고유 ID
-        "email": current_user.email,  # 기업 계정 이메일
-        "manager_name": current_user.manager_name,  # 담당자이름
-        "manager_email": current_user.manager_email,  # 담당자이메일
-        "manager_phone": current_user.manager_phone,  # 담당자 전화번호
-        "company": {
-            "company_name": current_user.company.company_name,  # 기업이름
-            "company_intro": current_user.company.company_intro,  # 기업소개
-            "business_reg_number": current_user.company.business_reg_number,
-            "opening_date": current_user.company.opening_date.isoformat(),
-            "ceo_name": current_user.company.ceo_name,
-        },
-        # 공고 리스트
-        "job_postings": [
-            {
-                "id": job_posting.id,
-                "title": job_posting.title,
-                "work_address": job_posting.work_address,
-                "deadline_at": job_posting.deadline_at,
-                "is_always_recruiting": job_posting.is_always_recruiting,
-            }
-            for job_posting in current_user.job_postings
-        ],
-    }
+async def get_company_user_mypage(db: AsyncSession, current_user: CompanyUser):
+
+    result = await db.execute(
+        select(CompanyUser)
+        .options(
+            selectinload(CompanyUser.company), selectinload(CompanyUser.job_postings)
+        )
+        .where(CompanyUser.id == current_user.id)
+    )
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="기업 회원 정보를 찾을 수 없습니다.",
+        )
     return result
 
 
 # 기업 회원 정보 수정
 async def update_company_user(
     db: AsyncSession,
-    company_user_id: int,
     payload: CompanyUserUpdateRequest,
     current_user: CompanyUser,
 ):
-    # 수정 권한 체크
-    if current_user.id != company_user_id:
-        raise HTTPException(status_code=403, detail="수정 권한이 없습니다.")
-
     has_changes = False
-
-    # 수정할 유저 필드
-    user_fields = {
-        "manager_name": payload.manager_name,
-        "manager_phone": payload.manager_phone,
-        "manager_email": payload.manager_email,
-    }
-
-    # 수정할 기업 필드
-    company_fields = {
-        "company_intro": payload.company_intro,
-        "address": payload.address,
-        "company_image": payload.company_image,
-    }
-
-    # 담당자 정보 수정
-    for field, value in user_fields.items():
-        if value is not None and getattr(current_user, field) != value:
-            setattr(current_user, field, value)
-            has_changes = True
-
-    # 기업 정보 수정
-    for field, value in company_fields.items():
-        if value is not None and getattr(current_user.company, field) != value:
-            setattr(current_user.company, field, value)
-            has_changes = True
 
     # 비밀번호 수정
     if payload.password:
@@ -186,27 +149,27 @@ async def update_company_user(
             current_user.password = hash_password(payload.password)
             has_changes = True
 
+    # 수정할 유저 필드
+    user_fields = {
+        "manager_name": payload.manager_name,
+        "manager_phone": payload.manager_phone,
+        "manager_email": payload.manager_email,
+        "company_intro": payload.company_intro,
+        "address": payload.address,
+        "company_image": payload.company_image,
+    }
+
+    for field, new_value in user_fields.items():
+        if new_value is not None and getattr(current_user, field) != new_value:
+            setattr(current_user, field, new_value)
+            has_changes = True
+
     # 커밋 처리
     if has_changes:
         await db.commit()
         await db.refresh(current_user)
 
-    result = {
-        "company_user_id": current_user.id,
-        "email": current_user.email,
-        "manager_name": current_user.manager_name,
-        "manager_phone": current_user.manager_phone,
-        "manager_email": current_user.manager_email,
-        "company": {
-            "company_name": current_user.company.company_name,
-            "company_intro": current_user.company.company_intro,
-            "business_reg_number": current_user.company.business_reg_number,
-            "opening_date": current_user.company.opening_date.isoformat(),
-            "ceo_name": current_user.company.ceo_name,
-            "address": current_user.company.address,
-            "company_image": current_user.company.company_image,
-        },
-    }
+    result = CompanyUserUpdateResponse
     return result
 
 
