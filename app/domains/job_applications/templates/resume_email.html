@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ job_title }} 지원자 이력서</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Noto Sans KR', sans-serif; background:#f5f5f5; }
+        .resume { width: 800px; margin:40px auto; background:#fff; box-shadow:0 0 8px rgba(0,0,0,.15); }
+        .header { display:flex; padding:32px; background:linear-gradient(to bottom,#d9d9d9,#eeeeee); }
+        .profile-img { width:100px; height:120px; object-fit:cover; border-radius:4px; }
+        .info { margin-left:32px; display:flex; flex-direction:column; justify-content:center; }
+        .info h1 { margin:0 0 16px 0; font-size:36px; font-weight:700; }
+        .info ul { list-style:none; margin:0; padding:0; line-height:1.8; }
+        .section { padding:24px 32px; }
+        .section-title { font-size:20px; font-weight:700; margin:0 0 12px 0; border-bottom:2px solid #888; padding-bottom:6px; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:8px 6px; text-align:left; font-size:14px; }
+        th { width:140px; color:#444; font-weight:500; background:#fafafa; }
+        tr:nth-child(even) td { background:#f9f9f9; }
+        .section:not(:last-child) { border-bottom:1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <div class="resume">
+        <div class="header">
+            <img src="{{ resume.resume_image }}" alt="프로필 사진" class="profile-img" style="width:100px; height:120px; object-fit:cover;">
+            <div class="info">
+                <h1>{{ applicant.name }}</h1>
+                <ul>
+                    <li>이메일 : {{ applicant.email }}</li>
+                    <li>성별   : {{ applicant.gender or '-' }}</li>
+                    <li>생년월일 : {{ applicant.birthday or '-' }}</li>
+                    <li>전화번호 : {{ applicant.phone_number or '-' }}</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">학력사항</h2>
+            <table style="width:100%; border-collapse:collapse; border:1px solid #ccc;">
+                <tr><th style="border:1px solid #ccc; padding:6px;">구분</th><th style="border:1px solid #ccc; padding:6px;">학교명</th><th style="border:1px solid #ccc; padding:6px;">상태</th><th style="border:1px solid #ccc; padding:6px;">시작일</th><th style="border:1px solid #ccc; padding:6px;">종료일</th></tr>
+                {% for e in resume.educations %}
+                <tr>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ e.education_type.value }}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ e.school_name }}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ e.education_status.value }}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ e.start_date or '-' }}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ e.end_date or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">경력사항</h2>
+            <table style="width:100%; border-collapse:collapse; border:1px solid #ccc;">
+                <tr><th style="border:1px solid #ccc; padding:6px;">회사명</th><th style="border:1px solid #ccc; padding:6px;">직무</th><th style="border:1px solid #ccc; padding:6px;">시작일</th><th style="border:1px solid #ccc; padding:6px;">종료일</th><th style="border:1px solid #ccc; padding:6px;">업무 내용</th></tr>
+                {% for x in resume.experiences %}
+                <tr>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ x.company_name }}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ x.position }}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ x.start_date or '-' }}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ x.end_date or '-' }}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">{{ x.description or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">자기소개</h2>
+            <p>{{ resume.introduction or '-' }}</p>
+        </div>
+    </div>
+</body>
+</html>

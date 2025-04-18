@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models import JobApplication, Resume, JobPosting, CompanyUser
+from app.models import JobApplication, Resume, JobPosting, CompanyUser, User
 from .schemas import ApplicationStatusEnum
+from .utils import send_email, jinja_env
 
 
 # 사용자가 채용공고에 대해 본인의 이력서로 지원
@@ -83,6 +84,25 @@ async def create_application(
         session.add(new_app)  # 신규 지원 레코드 추가
         await session.commit()  # 세션 커밋
         await session.refresh(new_app)  # 새로 추가된 레코드 새로 고침
+        # 이메일 발송
+        job = await session.get(JobPosting, job_posting_id)
+        author = await session.get(CompanyUser, job.author_id)
+        applicant = await session.get(User, user_id)
+
+        if author and author.manager_email:
+            template = jinja_env.get_template("resume_email.html")
+            html = template.render(
+                job_title=job.title,
+                applicant=applicant,
+                resume=snapshot  # snapshot 대신 resume 모델 직접 넘겨도 OK
+            )
+            await send_email(
+                to_email=author.manager_email,
+                subject=f"[{job.title}] 지원자 이력서",
+                html_content=html,
+                text_content="지원자 이력서를 확인해주세요."
+            )
+
         return new_app  # 생성된 지원 반환
     except HTTPException:  # HTTP 예외 발생 시
         raise  # 예외 반환
