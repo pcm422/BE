@@ -10,6 +10,7 @@ from app.domains.job_postings.router import router as job_postings_router
 from app.domains.users.oauth.social_router import router as social_router
 from app.domains.users.router import router as users_router
 from app.domains.company_users.router import router as company_users_router
+from app.domains.company_info.router import router as company_info_router
 from app.domains.resumes.router import router as resumes_router
 from app.domains.job_applications.router import router as applications_router
 
@@ -59,6 +60,7 @@ app.include_router(favorites_router)
 app.include_router(social_router)
 
 app.include_router(company_users_router)
+app.include_router(company_info_router)
 app.include_router(resumes_router)
 app.include_router(applications_router)
 
