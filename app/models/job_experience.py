@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import datetime, date
 
+from pydantic import field_validator
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Text
 from sqlalchemy.orm import relationship
 from app.models.base import Base
@@ -21,6 +22,14 @@ class ResumeExperience(Base):                              # 경력사항 테이
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)  # 수정일
 
     resume = relationship("Resume", back_populates="experiences")
-    
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def parse_month_only(cls, value):
+        # 예: '2023-06' → '2023-06-01'
+        if value:
+            return date.fromisoformat(f"{value}-01")
+        return None
+
     def __str__(self):
         return f"{self.company_name} - {self.position}"

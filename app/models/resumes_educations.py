@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum as PyEnum
 
+from pydantic import field_validator
 from sqlalchemy import Column, Date, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Integer, String
@@ -44,6 +45,14 @@ class ResumeEducation(Base):
     # 관계
     resume = relationship("Resume", back_populates="educations", lazy="selectin")
 
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def parse_month_only(cls, value):
+        # 예: '2023-06' → '2023-06-01'
+        if value:
+            return date.fromisoformat(f"{value}-01")
+        return None
 
     def __str__(self):
         return f"{self.school_name} - {self.education_type}"
