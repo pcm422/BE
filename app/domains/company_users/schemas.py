@@ -80,6 +80,7 @@ class SuccessResponse(BaseModel, Generic[T]):
 
 ### 응답 스키마
 class CompanyInfoResponse(BaseModel):  # 기업 정보
+    company_id :int
     company_name: str
     company_intro: str
     business_reg_number: str
