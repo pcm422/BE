@@ -15,11 +15,6 @@ def serialize_resume(resume: Resume) -> dict:
         "id": resume.id,  # 이력서 고유 ID
         "user_id": resume.user_id,  # 이력서 작성자 사용자 ID
         "resume_image": resume.resume_image,  # 이력서 이미지 URL
-        "company_name": resume.company_name,  # 회사명
-        "position": resume.position,  # 직무 또는 직급
-        "work_period_start": resume.work_period_start.isoformat() if resume.work_period_start else None,
-        # 근무 시작일
-        "work_period_end": resume.work_period_end.isoformat() if resume.work_period_end else None,  # 근무 종료일
         "desired_area": resume.desired_area,  # 희망 근무 지역
         "introduction": resume.introduction,  # 자기소개 내용
         "created_at": resume.created_at.isoformat() if resume.created_at else None,  # 생성일
@@ -78,10 +73,6 @@ async def create_new_resume(resume_data: ResumeCreate, db: AsyncSession) -> Resu
     new_resume = Resume(
         user_id=resume_data.user_id,               # 사용자 ID
         resume_image=resume_data.resume_image,      # 이력서 이미지
-        company_name=resume_data.company_name,      # 회사명
-        position=resume_data.position,              # 직급/직무
-        work_period_start=resume_data.work_period_start,  # 근무 시작일
-        work_period_end=resume_data.work_period_end,      # 근무 종료일
         desired_area=resume_data.desired_area,      # 희망 지역
         introduction=resume_data.introduction,      # 자기소개
         created_at=datetime.now(),                  # 생성일
@@ -153,14 +144,6 @@ async def update_existing_resume(resumes_id: int, user_id: int, resume_data: Res
     # 요청 데이터에 포함된 각 필드가 None이 아닐 경우 해당 필드를 수정
     if resume_data.resume_image is not None:
         resume.resume_image = resume_data.resume_image  # 이력서 이미지 URL 수정
-    if resume_data.company_name is not None:
-        resume.company_name = resume_data.company_name  # 회사명 수정
-    if resume_data.position is not None:
-        resume.position = resume_data.position  # 직무/직급 수정
-    if resume_data.work_period_start is not None:
-        resume.work_period_start = resume_data.work_period_start  # 근무 시작일 수정
-    if resume_data.work_period_end is not None:
-        resume.work_period_end = resume_data.work_period_end  # 근무 종료일 수정
     if resume_data.desired_area is not None:
         resume.desired_area = resume_data.desired_area  # 희망 지역 수정
     if resume_data.introduction is not None:
