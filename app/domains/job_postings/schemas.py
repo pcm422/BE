@@ -4,18 +4,16 @@ from typing import Any, Type, TypeVar, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator, Field
 from fastapi import Form, HTTPException, status
-from typing import Optional
 
 from app.models.job_postings import (EducationEnum, JobCategoryEnum,
                                      PaymentMethodEnum, WorkDurationEnum)
-from app.models.users import User
 
 # Enum 타입 힌팅을 위한 TypeVar
 TEnum = TypeVar("TEnum", bound=enum.Enum)
 
 # --- Helper Functions ---
 
-def _validate_dates_logic(start_date: date | None, end_date: date | None, deadline: date | None, is_always_recruiting: bool | None) -> None:
+def _validate_dates_logic(start_date: date | None, end_date: date | None, is_always_recruiting: bool | None) -> None:
     """공통 날짜 유효성 검사 로직"""
     # 상시 모집이 아닐 경우에만 날짜 검증
     if not is_always_recruiting:
@@ -24,14 +22,6 @@ def _validate_dates_logic(start_date: date | None, end_date: date | None, deadli
         # 시작일과 종료일 관계 검증 (둘 다 존재할 때)
         if start_date and end_date and start_date > end_date:
             raise ValueError("모집 시작일은 종료일보다 빨라야 합니다")
-
-        # 마감일과 시작일 관계 검증 (둘 다 존재할 때)
-        if deadline and start_date and deadline < start_date:
-                raise ValueError("모집 마감일은 시작일과 같거나 이후여야 합니다")
-
-        # 마감일과 종료일 관계 검증 (둘 다 존재할 때)
-        if deadline and end_date and deadline > end_date:
-            raise ValueError("모집 마감일은 종료일과 같거나 이전이어야 합니다")
 
         # 시작일이 과거인지 검증 (시작일이 존재할 때)
         if start_date and start_date < today:
@@ -87,27 +77,26 @@ def _parse_enum(enum_class: Type[TEnum], value: str | None, field_name: str) -> 
 
 class JobPostingBase(BaseModel):
     # 모든 공고 스키마의 기본 클래스, 모든 필드는 선택적(Optional)
-    title: str | None = Field(None, description="채용공고 제목")
-    recruit_period_start: date | None = Field(None, description="모집 시작일")
-    recruit_period_end: date | None = Field(None, description="모집 종료일")
-    is_always_recruiting: bool | None = Field(False, description="상시 모집 여부")
-    education: EducationEnum | None = Field(None, description="요구 학력")
-    recruit_number: int | None = Field(None, description="모집 인원 (0은 '인원 미정')")
-    benefits: str | None = Field(None, description="복리 후생")
-    preferred_conditions: str | None = Field(None, description="우대 조건")
-    other_conditions: str | None = Field(None, description="기타 조건")
-    work_address: str | None = Field(None, description="근무지 주소")
-    work_place_name: str | None = Field(None, description="근무지명")
-    payment_method: PaymentMethodEnum | None = Field(None, description="급여 지급 방식")
-    job_category: JobCategoryEnum | None = Field(None, description="직종 카테고리")
-    work_duration: WorkDurationEnum | None = Field(None, description="근무 기간")
-    career: str | None = Field(None, description="경력 요구사항")
-    employment_type: str | None = Field(None, description="고용 형태")
-    salary: int | None = Field(None, description="급여")
-    deadline_at: date | None = Field(None, description="마감일")
-    work_days: str | None = Field(None, description="근무 요일/스케줄")
-    description: str | None = Field(None, description="상세 설명")
-    postings_image: str | None = Field(None, description="공고 이미지 URL")
+    title: Optional[str] = Field(None, description="채용공고 제목")
+    recruit_period_start: Optional[date] = Field(None, description="모집 시작일")
+    recruit_period_end: Optional[date] = Field(None, description="모집 종료일")
+    is_always_recruiting: Optional[bool] = Field(False, description="상시 모집 여부")
+    education: Optional[EducationEnum] = Field(None, description="요구 학력")
+    recruit_number: Optional[int] = Field(None, description="모집 인원 (0은 '인원 미정')")
+    benefits: Optional[str] = Field(None, description="복리 후생")
+    preferred_conditions: Optional[str] = Field(None, description="우대 조건")
+    other_conditions: Optional[str] = Field(None, description="기타 조건")
+    work_address: Optional[str] = Field(None, description="근무지 주소")
+    work_place_name: Optional[str] = Field(None, description="근무지명")
+    payment_method: Optional[PaymentMethodEnum] = Field(None, description="급여 지급 방식")
+    job_category: Optional[JobCategoryEnum] = Field(None, description="직종 카테고리")
+    work_duration: Optional[WorkDurationEnum] = Field(None, description="근무 기간")
+    career: Optional[str] = Field(None, description="경력 요구사항")
+    employment_type: Optional[str] = Field(None, description="고용 형태")
+    salary: Optional[int] = Field(None, description="급여")
+    work_days: Optional[str] = Field(None, description="근무 요일/스케줄")
+    description: Optional[str] = Field(None, description="상세 설명")
+    postings_image: Optional[str] = Field(None, description="공고 이미지 URL")
 
     # ORM 모델 -> Pydantic 모델 자동 변환 활성화
     model_config = ConfigDict(from_attributes=True)
@@ -116,8 +105,8 @@ class JobPostingBase(BaseModel):
 class JobPostingCreate(JobPostingBase):
     # 공고 '생성' 시 필요한 필드 정의 (대부분 필수, ...은 필수 필드 의미)
     title: str = Field(..., description="채용공고 제목")
-    recruit_period_start: date = Field(..., description="모집 시작일")
-    recruit_period_end: date = Field(..., description="모집 종료일")
+    recruit_period_start: Optional[date] = Field(None, description="모집 시작일")
+    recruit_period_end: Optional[date] = Field(None, description="모집 종료일")
     is_always_recruiting: bool = Field(False, description="상시 모집 여부")
     education: EducationEnum = Field(..., description="요구 학력")
     recruit_number: int = Field(..., description="모집 인원 (0은 '인원 미정')")
@@ -129,10 +118,9 @@ class JobPostingCreate(JobPostingBase):
     career: str = Field(..., description="경력 요구사항")
     employment_type: str = Field(..., description="고용 형태")
     salary: int = Field(..., description="급여")
-    deadline_at: date = Field(..., description="마감일")
     work_days: str = Field(..., description="근무 요일/스케줄")
     description: str = Field(..., description="상세 설명")
-    postings_image: str | None = Field(None, description="공고 이미지 URL (선택)") # 이미지는 생성 시 필수가 아님
+    postings_image: Optional[str] = Field(None, description="공고 이미지 URL (선택)")
 
     @model_validator(mode='after')
     def validate_model(self) -> 'JobPostingCreate':
@@ -142,7 +130,6 @@ class JobPostingCreate(JobPostingBase):
             _validate_dates_logic(
                 self.recruit_period_start,
                 self.recruit_period_end,
-                self.deadline_at,
                 self.is_always_recruiting
             )
         except ValueError as e:
@@ -183,7 +170,6 @@ class JobPostingUpdate(JobPostingBase):
             _validate_dates_logic(
                 self.recruit_period_start,
                 self.recruit_period_end,
-                self.deadline_at,
                 self.is_always_recruiting
             )
         except ValueError as e:
@@ -233,7 +219,6 @@ class JobPostingCreateFormData:
         career: Optional[str] = Form(None, description="경력 요구사항"),
         employment_type: Optional[str] = Form(None, description="고용 형태"),
         salary: Optional[str] = Form(None, description="급여 (숫자)"),
-        deadline_at: Optional[str] = Form(None, description="마감일 (YYYY-MM-DD)"),
         work_days: Optional[str] = Form(None, description="근무 요일/스케줄"),
         description: Optional[str] = Form(None, description="상세 설명"),
     ):
@@ -255,83 +240,114 @@ class JobPostingCreateFormData:
         self.career = career
         self.employment_type = employment_type
         self.salary = salary
-        self.deadline_at = deadline_at
         self.work_days = work_days
         self.description = description
 
-
     def parse_to_job_posting_create(self, postings_image_url: str | None) -> 'JobPostingCreate':
-        """Form 데이터를 JobPostingCreate Pydantic 모델로 변환하고 유효성 검사 수행"""
+        """
+        Form 데이터 필드를 검증하고 JobPostingCreate Pydantic 모델로 변환한다.
+        각 필드 타입에 맞는 파싱 함수(_parse_date, _parse_int, _parse_enum)를 사용한다.
+        파싱 중 에러 발생 시 HTTPException으로 변환하여 FastAPI에 전달한다.
+        """
+        parsed_data = {}
+        errors = {}
+
+        # 필수 필드 검증 및 파싱
+        if not self.title:
+            errors["title"] = "제목은 필수입니다."
+        else:
+            parsed_data["title"] = self.title
+
+        # 날짜 파싱 (선택적)
         try:
-            # 1. 헬퍼 함수들을 사용하여 문자열 데이터를 적절한 타입으로 변환
-            start_date = _parse_date(self.recruit_period_start, "모집 시작일")
-            end_date = _parse_date(self.recruit_period_end, "모집 종료일")
-            deadline = _parse_date(self.deadline_at, "마감일")
+            parsed_data["recruit_period_start"] = _parse_date(self.recruit_period_start, "모집 시작일")
+        except ValueError as e:
+            errors["recruit_period_start"] = str(e)
 
-            recruit_number_int = _parse_int(self.recruit_number, "모집 인원")
-            salary_int = _parse_int(self.salary, "급여", min_value=0)
+        try:
+            parsed_data["recruit_period_end"] = _parse_date(self.recruit_period_end, "모집 종료일")
+        except ValueError as e:
+            errors["recruit_period_end"] = str(e)
 
-            education_enum = _parse_enum(EducationEnum, self.education, "학력")
-            payment_method_enum = _parse_enum(PaymentMethodEnum, self.payment_method, "지불 방식")
-            job_category_enum = _parse_enum(JobCategoryEnum, self.job_category, "직종 카테고리")
-            work_duration_enum = _parse_enum(WorkDurationEnum, self.work_duration, "근무 기간")
+        # 상시 모집 여부는 bool로 처리 (FastAPI가 처리)
+        parsed_data["is_always_recruiting"] = self.is_always_recruiting
 
-            # 2. Pydantic 모델(JobPostingCreate) 생성을 위한 데이터 딕셔너리 준비
-            create_data = {
-                "title": self.title,
-                "recruit_period_start": start_date,
-                "recruit_period_end": end_date,
-                "is_always_recruiting": self.is_always_recruiting,
-                "education": education_enum,
-                "recruit_number": recruit_number_int,
-                "benefits": self.benefits,
-                "preferred_conditions": self.preferred_conditions,
-                "other_conditions": self.other_conditions,
-                "work_address": self.work_address,
-                "work_place_name": self.work_place_name,
-                "payment_method": payment_method_enum,
-                "job_category": job_category_enum,
-                "work_duration": work_duration_enum,
-                "career": self.career,
-                "employment_type": self.employment_type,
-                "salary": salary_int,
-                "deadline_at": deadline,
-                "work_days": self.work_days,
-                "description": self.description,
-                "postings_image": postings_image_url # 서비스 계층에서 전달받은 이미지 URL
-            }
+        # Enum 파싱 (선택적)
+        try:
+            parsed_data["education"] = _parse_enum(EducationEnum, self.education, "학력")
+            if parsed_data["education"] is None: errors["education"] = "학력은 필수입니다." # 필수 Enum 처리
+        except ValueError as e:
+            errors["education"] = str(e)
 
-            # 3. (선택적/방어적) Form(...)으로 받은 필수 필드가 None인지 추가 확인
-            required_fields_from_form = {
-                "title": self.title, "work_address": self.work_address, "work_place_name": self.work_place_name,
-                "career": self.career, "employment_type": self.employment_type,
-                "work_days": self.work_days, "description": self.description
-                # 날짜, 숫자, Enum 등은 _parse 함수 또는 JobPostingCreate에서 필수 처리됨
-            }
-            for name, value in required_fields_from_form.items():
-                # Form(...)으로 지정해도 간혹 None이 들어오는 경우를 대비한 방어 코드
-                if value is None:
-                    raise ValueError(f"필수 필드 '{name}'가 누락되었습니다.")
+        # 숫자 파싱 (선택적)
+        try:
+            parsed_data["recruit_number"] = _parse_int(self.recruit_number, "모집 인원")
+            if parsed_data["recruit_number"] is None: errors["recruit_number"] = "모집 인원은 필수입니다." # 필수 int 처리
+            elif parsed_data["recruit_number"] < 0: errors["recruit_number"] = "모집 인원은 0 이상이어야 합니다."
+        except ValueError as e:
+            errors["recruit_number"] = str(e)
 
-            # 4. JobPostingCreate 모델 인스턴스 생성 -> 이 과정에서 Pydantic 유효성 검사 실행됨
-            # (타입 검증, 필수 필드 존재 여부, @field_validator, @model_validator 실행)
-            job_posting_create_instance = JobPostingCreate(**create_data)
+        # 나머지 필드들은 문자열이므로 그대로 할당 (선택적)
+        parsed_data["benefits"] = self.benefits
+        parsed_data["preferred_conditions"] = self.preferred_conditions
+        parsed_data["other_conditions"] = self.other_conditions
+        parsed_data["work_address"] = self.work_address
+        if not parsed_data["work_address"]: errors["work_address"] = "근무지 주소는 필수입니다."
+        parsed_data["work_place_name"] = self.work_place_name
+        if not parsed_data["work_place_name"]: errors["work_place_name"] = "근무지명은 필수입니다."
 
-            # 5. 성공적으로 생성된 Pydantic 모델 인스턴스 반환
-            return job_posting_create_instance
+        try:
+            parsed_data["payment_method"] = _parse_enum(PaymentMethodEnum, self.payment_method, "급여 지급 방식")
+            if parsed_data["payment_method"] is None: errors["payment_method"] = "급여 지급 방식은 필수입니다."
+        except ValueError as e:
+            errors["payment_method"] = str(e)
 
-        except (ValueError, TypeError) as e: # 타입 변환 실패(ValueError), Pydantic 검증 실패(ValidationError는 ValueError 상속 안함 -> 수정 필요) 등
-            # PydanticValidationError는 별도 처리하거나 Exception으로 잡아야 함
-            # 여기서는 일단 ValueError, TypeError만 처리 (개선 가능)
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"입력 값 오류: {e}"
-            )
-        except Exception as e: # 기타 예상치 못한 에러 처리
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"처리 중 오류 발생: {e}"
-                )
+        try:
+            parsed_data["job_category"] = _parse_enum(JobCategoryEnum, self.job_category, "직종 카테고리")
+            if parsed_data["job_category"] is None: errors["job_category"] = "직종 카테고리는 필수입니다."
+        except ValueError as e:
+            errors["job_category"] = str(e)
+
+        try:
+            parsed_data["work_duration"] = _parse_enum(WorkDurationEnum, self.work_duration, "근무 기간")
+            if parsed_data["work_duration"] is None: errors["work_duration"] = "근무 기간은 필수입니다."
+        except ValueError as e:
+            errors["work_duration"] = str(e)
+
+
+        parsed_data["career"] = self.career
+        if not parsed_data["career"]: errors["career"] = "경력 요구사항은 필수입니다."
+        parsed_data["employment_type"] = self.employment_type
+        if not parsed_data["employment_type"]: errors["employment_type"] = "고용 형태는 필수입니다."
+
+        try:
+            parsed_data["salary"] = _parse_int(self.salary, "급여", min_value=0)
+            if parsed_data["salary"] is None: errors["salary"] = "급여는 필수입니다."
+        except ValueError as e:
+            errors["salary"] = str(e)
+
+
+        parsed_data["work_days"] = self.work_days
+        if not parsed_data["work_days"]: errors["work_days"] = "근무 요일/스케줄은 필수입니다."
+        parsed_data["description"] = self.description
+        if not parsed_data["description"]: errors["description"] = "상세 설명은 필수입니다."
+
+        # 이미지 URL 추가
+        parsed_data["postings_image"] = postings_image_url
+
+
+        # 에러가 하나라도 있으면 HTTPException 발생
+        if errors:
+            # 에러 메시지를 detail에 포함하여 전달
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=errors)
+
+        try:
+            # 모든 파싱이 성공하면 Pydantic 모델 생성 시도
+            # 이 과정에서 Pydantic의 모델 레벨 유효성 검사(@model_validator)가 추가로 실행됨
+            return JobPostingCreate(**parsed_data)
+        except ValueError as e:
+             # Pydantic 유효성 검사 에러 처리
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
 
 class JobPostingHelpers(BaseModel):
@@ -339,19 +355,19 @@ class JobPostingHelpers(BaseModel):
     @staticmethod
     def get_education_options():
         """학력 옵션 목록 반환 (value: Enum 멤버 이름(key), label: Enum 값(실제 표시될 값))"""
-        return [{"value": edu.name, "label": edu.value} for edu in EducationEnum]
+        return [{"name": edu.name, "value": edu.value} for edu in EducationEnum]
 
     @staticmethod
     def get_payment_method_options():
         """급여 지급 방식 옵션 목록 반환"""
-        return [{"value": method.name, "label": method.value} for method in PaymentMethodEnum]
+        return [{"name": method.name, "value": method.value} for method in PaymentMethodEnum]
 
     @staticmethod
     def get_job_category_options():
         """직종 카테고리 옵션 목록 반환"""
-        return [{"value": cat.name, "label": cat.value} for cat in JobCategoryEnum]
+        return [{"name": cat.name, "value": cat.value} for cat in JobCategoryEnum]
 
     @staticmethod
     def get_work_duration_options():
         """근무 기간 옵션 목록 반환"""
-        return [{"value": dur.name, "label": dur.value} for dur in WorkDurationEnum]
+        return [{"name": dur.name, "value": dur.value} for dur in WorkDurationEnum]

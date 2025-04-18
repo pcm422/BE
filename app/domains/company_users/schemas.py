@@ -80,10 +80,10 @@ class SuccessResponse(BaseModel, Generic[T]):
 class JobPostingsSummary(BaseModel):  # 공고 요약
     id: int
     title: str
-    work_address: str
+    work_address: Optional[str]
     is_always_recruiting: bool
-    recruit_period_start = date
-    recruit_period_end = date
+    recruit_period_start: Optional[date] = None
+    recruit_period_end: Optional[date] = None
     model_config = ConfigDict(from_attributes=True)
 
 
