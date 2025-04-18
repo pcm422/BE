@@ -7,10 +7,12 @@ import boto3
 import uuid
 import os
 from datetime import datetime
+from typing import Optional
 
 from app.core.config import ALGORITHM, SECRET_KEY
 from app.core.db import get_db_session
 from app.models.company_users import CompanyUser
+from app.models.users import User
 
 # NCP Object Storage 접속 정보
 NCP_ACCESS_KEY = os.getenv("NCP_ACCESS_KEY")
@@ -53,6 +55,56 @@ async def get_current_company_user(
     
     return company_user
 
+# 인증된 일반 사용자 반환 (선택적, JWT 'sub' 클레임의 ID 기준)
+async def get_current_user_optional(
+    Authorization: Optional[str] = Header(None), db: AsyncSession = Depends(get_db_session)
+) -> Optional[User]:
+    """
+    Authorization 헤더의 JWT 토큰을 검증하고 해당하는 일반 사용자를 반환합니다.
+    토큰이 없거나 유효하지 않으면 None을 반환합니다.
+    JWT 'sub' 클레임에 저장된 사용자 ID를 사용하여 사용자를 찾습니다.
+    """
+    if Authorization is None or not Authorization.startswith("Bearer "):
+        return None
+
+    token = Authorization.split(" ")[1]
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # JWT payload의 'sub' 클레임에서 사용자 ID 문자열 추출
+        user_id_str: str = payload.get("sub") # "user_id" 대신 "sub" 사용
+        if user_id_str is None:
+            print("경고: JWT 페이로드에 'sub' 클레임이 없습니다.")
+            return None
+
+        # 'sub' 클레임 값을 정수(int)로 변환 시도
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            print(f"경고: 'sub' 클레임('{user_id_str}')을 정수로 변환할 수 없습니다.")
+            return None
+
+    except jwt.ExpiredSignatureError:
+        print("경고: JWT 토큰이 만료되었습니다.")
+        return None
+    except jwt.PyJWTError as e:
+        print(f"경고: JWT 검증 실패 - {e}")
+        return None
+    except Exception as e:
+        print(f"JWT 디코딩 또는 페이로드 접근 중 오류 발생: {e}")
+        return None
+
+    # 데이터베이스에서 일반 사용자 조회 (ID 기준)
+    try:
+        result = await db.execute(
+            select(User).filter(User.id == user_id) # 변환된 정수 ID 사용
+        )
+        user = result.scalar_one_or_none()
+        # print(f"[UTILS get_current_user_optional] 사용자 찾음: {user} (ID: {user_id})")
+        return user
+    except Exception as e:
+        print(f"DB에서 사용자 조회 중 오류 발생: {e}")
+        return None
 
 def hash_password(password: str) -> str:
     """비밀번호를 bcrypt 해시로 변환"""
