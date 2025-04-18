@@ -4,11 +4,9 @@ from typing import Any, Type, TypeVar, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator, Field
 from fastapi import Form, HTTPException, status
-from typing import Optional
 
 from app.models.job_postings import (EducationEnum, JobCategoryEnum,
                                      PaymentMethodEnum, WorkDurationEnum)
-from app.models.users import User
 
 # Enum 타입 힌팅을 위한 TypeVar
 TEnum = TypeVar("TEnum", bound=enum.Enum)
@@ -79,26 +77,26 @@ def _parse_enum(enum_class: Type[TEnum], value: str | None, field_name: str) -> 
 
 class JobPostingBase(BaseModel):
     # 모든 공고 스키마의 기본 클래스, 모든 필드는 선택적(Optional)
-    title: str | None = Field(None, description="채용공고 제목")
+    title: Optional[str] = Field(None, description="채용공고 제목")
     recruit_period_start: Optional[date] = Field(None, description="모집 시작일")
     recruit_period_end: Optional[date] = Field(None, description="모집 종료일")
-    is_always_recruiting: bool | None = Field(False, description="상시 모집 여부")
-    education: EducationEnum | None = Field(None, description="요구 학력")
-    recruit_number: int | None = Field(None, description="모집 인원 (0은 '인원 미정')")
-    benefits: str | None = Field(None, description="복리 후생")
-    preferred_conditions: str | None = Field(None, description="우대 조건")
-    other_conditions: str | None = Field(None, description="기타 조건")
-    work_address: str | None = Field(None, description="근무지 주소")
-    work_place_name: str | None = Field(None, description="근무지명")
-    payment_method: PaymentMethodEnum | None = Field(None, description="급여 지급 방식")
-    job_category: JobCategoryEnum | None = Field(None, description="직종 카테고리")
-    work_duration: WorkDurationEnum | None = Field(None, description="근무 기간")
-    career: str | None = Field(None, description="경력 요구사항")
-    employment_type: str | None = Field(None, description="고용 형태")
-    salary: int | None = Field(None, description="급여")
-    work_days: str | None = Field(None, description="근무 요일/스케줄")
-    description: str | None = Field(None, description="상세 설명")
-    postings_image: str | None = Field(None, description="공고 이미지 URL")
+    is_always_recruiting: Optional[bool] = Field(False, description="상시 모집 여부")
+    education: Optional[EducationEnum] = Field(None, description="요구 학력")
+    recruit_number: Optional[int] = Field(None, description="모집 인원 (0은 '인원 미정')")
+    benefits: Optional[str] = Field(None, description="복리 후생")
+    preferred_conditions: Optional[str] = Field(None, description="우대 조건")
+    other_conditions: Optional[str] = Field(None, description="기타 조건")
+    work_address: Optional[str] = Field(None, description="근무지 주소")
+    work_place_name: Optional[str] = Field(None, description="근무지명")
+    payment_method: Optional[PaymentMethodEnum] = Field(None, description="급여 지급 방식")
+    job_category: Optional[JobCategoryEnum] = Field(None, description="직종 카테고리")
+    work_duration: Optional[WorkDurationEnum] = Field(None, description="근무 기간")
+    career: Optional[str] = Field(None, description="경력 요구사항")
+    employment_type: Optional[str] = Field(None, description="고용 형태")
+    salary: Optional[int] = Field(None, description="급여")
+    work_days: Optional[str] = Field(None, description="근무 요일/스케줄")
+    description: Optional[str] = Field(None, description="상세 설명")
+    postings_image: Optional[str] = Field(None, description="공고 이미지 URL")
 
     # ORM 모델 -> Pydantic 모델 자동 변환 활성화
     model_config = ConfigDict(from_attributes=True)
@@ -122,7 +120,7 @@ class JobPostingCreate(JobPostingBase):
     salary: int = Field(..., description="급여")
     work_days: str = Field(..., description="근무 요일/스케줄")
     description: str = Field(..., description="상세 설명")
-    postings_image: str | None = Field(None, description="공고 이미지 URL (선택)") # 이미지는 생성 시 필수가 아님
+    postings_image: Optional[str] = Field(None, description="공고 이미지 URL (선택)")
 
     @model_validator(mode='after')
     def validate_model(self) -> 'JobPostingCreate':
