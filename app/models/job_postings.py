@@ -63,8 +63,8 @@ class JobPosting(Base):
     author_id = Column(Integer, ForeignKey("company_users.id"))  # 담당자
     company_id = Column(Integer, ForeignKey("company_info.id"))  # 회사
 
-    recruit_period_start = Column(Date)
-    recruit_period_end = Column(Date)
+    recruit_period_start = Column(Date, nullable=True)
+    recruit_period_end = Column(Date, nullable=True)
     is_always_recruiting = Column(Boolean, default=False)
 
     education = Column(
@@ -89,7 +89,6 @@ class JobPosting(Base):
     employment_type = Column(String(50), nullable=False)
     salary = Column(Integer, nullable=False)
 
-    deadline_at = Column(Date, nullable=False)
     work_days = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     postings_image = Column(String(255), nullable=False)
