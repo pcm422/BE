@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
@@ -16,9 +17,7 @@ class CompanyUser(Base):
     company_id = Column(
         Integer, ForeignKey("company_info.id"), nullable=False
     )  # 참조 기업 ID
-    manager_name = Column(String(50), nullable=False)  # 담당자 이름
-    manager_phone = Column(String(20), nullable=False)  # 담당자 전화번호
-    manager_email = Column(String(100), nullable=True)  # 담당자 이메일
+
     created_at = Column(DateTime, default=datetime.now)  # 가입 날짜
     updated_at = Column(
         DateTime, default=datetime.now, onupdate=datetime.now
@@ -26,6 +25,7 @@ class CompanyUser(Base):
 
     job_postings = relationship("JobPosting", back_populates="author",lazy="selectin")
     company = relationship("CompanyInfo", back_populates="company_users",lazy="selectin")
+    company_name = association_proxy("company", "company_name")
 
     def __str__(self):
         return self.email

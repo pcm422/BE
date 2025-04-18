@@ -1,8 +1,7 @@
 from datetime import date
 from typing import Generic, List, Optional, TypeVar
 
-from pydantic import (BaseModel, ConfigDict, EmailStr, Field, constr,
-                      field_validator)
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, constr, field_validator
 
 
 ### 기업 회원 공통 베이스
@@ -78,9 +77,33 @@ class SuccessResponse(BaseModel, Generic[T]):
     data: Optional[T] = None
 
 
-### 응답 스키마
-class CompanyInfoResponse(BaseModel):  # 기업 정보
-    company_id :int
+class JobPostingsSummary(BaseModel):  # 공고 요약
+    id: int
+    title: str
+    work_address: str
+    is_always_recruiting: bool
+    recruit_period_start = date
+    recruit_period_end = date
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CompanyUserRegisterResponse(BaseModel):
+    company_user_id: int
+    email: EmailStr
+    company_name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CompanyUserResponse(BaseModel):  # 기업 유저 정보
+    company_user_id: int
+    email: EmailStr
+
+    manager_name: str
+    manager_email: EmailStr
+    manager_phone: str
+
+    company_id: int
     company_name: str
     company_intro: str
     business_reg_number: str
@@ -92,27 +115,6 @@ class CompanyInfoResponse(BaseModel):  # 기업 정보
     model_config = ConfigDict(from_attributes=True)
 
 
-class JobPostingsSummary(BaseModel):  # 공고 요약
-    id: int
-    title: str
-    work_address: str
-    deadline_at: date
-    is_always_recruiting: bool
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class CompanyUserResponse(BaseModel):  # 기업 유저 정보
-    company_user_id: int
-    email: EmailStr
-    manager_name: str
-    manager_email: EmailStr
-    manager_phone: str
-    company: CompanyInfoResponse
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class CompanyUserLoginResponse(BaseModel):  # 로그인 응답
     company_user_id: int
     email: EmailStr
@@ -120,6 +122,21 @@ class CompanyUserLoginResponse(BaseModel):  # 로그인 응답
     token_type: str = "bearer"
     access_token: str
     refresh_token: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CompanyUserUpdateResponse(BaseModel):
+    company_user_id: int
+    email: EmailStr
+    company_name: str
+    # 수정된 값 필드
+    manager_name: str
+    manager_email: EmailStr
+    manager_phone: str
+    company_intro: str
+    address: Optional[str]
+    company_image: Optional[str]
 
     model_config = ConfigDict(from_attributes=True)
 

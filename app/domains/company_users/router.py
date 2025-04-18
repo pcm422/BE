@@ -3,23 +3,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
 from app.core.utils import get_current_company_user
-from app.domains.company_users.schemas import (CompanyInfoResponse,
-                                               CompanyUserInfo,
-                                               CompanyUserLoginRequest,
-                                               CompanyUserLoginResponse,
-                                               CompanyUserRegisterRequest,
-                                               CompanyUserResponse,
-                                               CompanyUserUpdateRequest,
-                                               FindCompanyUserEmail,
-                                               ResetCompanyUserPassword,
-                                               SuccessResponse)
-from app.domains.company_users.service import (delete_company_user,
-                                               find_company_user_email,
-                                               get_company_user_mypage,
-                                               login_company_user,
-                                               register_company_user,
-                                               reset_company_user_password,
-                                               update_company_user)
+from app.domains.company_users.schemas import (
+    CompanyUserInfo,
+    CompanyUserLoginRequest,
+    CompanyUserLoginResponse,
+    CompanyUserRegisterRequest,
+    CompanyUserRegisterResponse,
+    CompanyUserResponse,
+    CompanyUserUpdateRequest,
+    CompanyUserUpdateResponse,
+    FindCompanyUserEmail,
+    ResetCompanyUserPassword,
+    SuccessResponse,
+)
+from app.domains.company_users.service import (
+    delete_company_user,
+    find_company_user_email,
+    get_company_user_mypage,
+    login_company_user,
+    register_company_user,
+    reset_company_user_password,
+    update_company_user,
+)
 from app.domains.company_users.utiles import success_response
 from app.domains.users.service import create_access_token, create_refresh_token
 from app.models import CompanyUser
@@ -44,19 +49,10 @@ async def register_companyuser(
     payload: CompanyUserRegisterRequest, db: AsyncSession = Depends(get_db_session)
 ):
     company_user = await register_company_user(db, payload)
-    user_data = CompanyUserResponse(
+    user_data = CompanyUserRegisterResponse(
         company_user_id=company_user.id,
         email=company_user.email,
-        manager_name=company_user.manager_name,
-        manager_phone=company_user.manager_phone,
-        manager_email=company_user.manager_email,
-        company=CompanyInfoResponse(
-            company_name=company_user.company.company_name,
-            company_intro=company_user.company.company_intro,
-            business_reg_number=company_user.company.business_reg_number,
-            opening_date=company_user.company.opening_date,
-            ceo_name=company_user.company.ceo_name,
-        ),
+        company_name=company_user.company_name,
     )
     return success_response("회원가입이 완료 되었습니다.", data=user_data)
 
@@ -107,7 +103,7 @@ async def logout_company_user():
 # 기업 회원 정보 조회 (마이페이지)
 @router.get(
     "/me",
-    summary="기업 회원 마이페이지 조회",
+    summary="기업 회원 마이페이지",
     status_code=status.HTTP_200_OK,
     response_model=SuccessResponse[CompanyUserInfo],
     responses={
@@ -118,13 +114,11 @@ async def logout_company_user():
 )
 async def get_companyuser(
     db: AsyncSession = Depends(get_db_session),
-    current_company_user: CompanyUser = Depends(get_current_company_user),
+    current_user: CompanyUser = Depends(get_current_company_user),
 ):
-    data = await get_company_user_mypage(
-        current_company_user.id,
-        current_user=current_company_user,
-    )
-    return success_response("기업 회원 정보 조회가 완료되었습니다.", data=data)
+    user_data = await get_company_user_mypage(db, current_user)
+
+    return success_response("기업 회원 정보 조회가 완료되었습니다.", data=user_data)
 
 
 # 기업 정보 수정
@@ -132,7 +126,7 @@ async def get_companyuser(
     "/me",
     summary="기업 회원 정보 수정",
     status_code=status.HTTP_200_OK,
-    response_model=SuccessResponse[CompanyUserInfo],
+    response_model=SuccessResponse[CompanyUserUpdateResponse],
     responses={
         200: {"description": "수정 성공"},
         400: {"description": "비밀번호 불일치"},
@@ -142,14 +136,12 @@ async def get_companyuser(
 async def update_companyuser(
     payload: CompanyUserUpdateRequest,
     db: AsyncSession = Depends(get_db_session),
-    current_company_user: CompanyUser = Depends(get_current_company_user),
+    current_user: CompanyUser = Depends(get_current_company_user),
 ):
     update_data = await update_company_user(
-        db=db,
-        payload=payload,
-        current_user=current_company_user,
-        company_user_id=current_company_user.id,
+        db=db, payload=payload, current_user=current_user
     )
+
     return success_response("기업 회원 정보 수정이 완료되었습니다.", data=update_data)
 
 
