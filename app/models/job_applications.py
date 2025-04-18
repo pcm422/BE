@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from enum import Enum
 
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, JSON
 from sqlalchemy import Enum as SQLAEnum
 from sqlalchemy import ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import relationship
@@ -24,6 +24,12 @@ class JobApplication(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     job_posting_id = Column(Integer, ForeignKey("job_postings.id"), nullable=False)
     resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False)
+    resumes_data = Column(
+        JSON,
+        nullable=False,
+        comment="지원 시점 이력서 데이터 스냅샷"
+    )
+
 
     status = Column(
         SQLAEnum(ApplicationStatusEnum, name="application_status_enum"),

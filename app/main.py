@@ -11,6 +11,7 @@ from app.domains.users.oauth.social_router import router as social_router
 from app.domains.users.router import router as users_router
 from app.domains.company_users.router import router as company_users_router
 from app.domains.resumes.router import router as resumes_router
+from app.domains.job_applications.router import router as applications_router
 
 # FastAPI 애플리케이션 인스턴스 생성 (프로젝트 제목 및 버전 설정)
 app = FastAPI(title="My FastAPI Project", version="0.1.0")
@@ -59,6 +60,7 @@ app.include_router(social_router)
 
 app.include_router(company_users_router)
 app.include_router(resumes_router)
+app.include_router(applications_router)
 
 class CSPMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
