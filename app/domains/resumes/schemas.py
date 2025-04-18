@@ -42,10 +42,6 @@ class ExperienceUpdate(BaseModel):
 class ResumeCreate(BaseModel):
     user_id: int                             # 사용자 ID
     resume_image: Optional[str]              # 이력서 이미지
-    company_name: Optional[str]              # 회사명
-    position: Optional[str]                  # 직급 또는 직무
-    work_period_start: Optional[datetime]    # 근무 시작일
-    work_period_end: Optional[datetime]      # 근무 종료일
     desired_area: Optional[str]              # 희망 지역
     introduction: Optional[str]              # 자기소개
     educations: Optional[List[EducationCreate]] = None  # 학력사항 리스트
@@ -54,10 +50,6 @@ class ResumeCreate(BaseModel):
 # 이력서 수정 요청에 사용할 입력 데이터
 class ResumeUpdate(BaseModel):
     resume_image: Optional[str] = None  # 이력서 이미지 URL
-    company_name: Optional[str] = None  # 회사명
-    position: Optional[str] = None  # 직무
-    work_period_start: Optional[datetime] = None  # 근무 시작일
-    work_period_end: Optional[datetime] = None  # 근무 종료일
     desired_area: Optional[str] = None  # 희망 지역
     introduction: Optional[str] = None  # 자기소개 내용
     educations: Optional[List[EducationUpdate]] = None  # 학력사항 수정 리스트

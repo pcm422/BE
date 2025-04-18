@@ -39,10 +39,6 @@ async def create_resume(
     {
       "user_id": 7,
       "resume_image": "",
-      "company_name": "오즈코딩스쿨",
-      "position": "개발자",
-      "work_period_start": "2020-01-01T00:00:00",
-      "work_period_end": "2021-12-31T23:59:59",
       "desired_area": "서울",
       "introduction": "자기소개 내용",
       "educations": [
@@ -118,10 +114,6 @@ async def update_resume(
     {
       "user_id": 7,
       "resume_image": "",
-      "company_name": "오즈코딩스쿨",
-      "position": "개발자",
-      "work_period_start": "2020-01-01T00:00:00",
-      "work_period_end": "2021-12-31T23:59:59",
       "desired_area": "서울",
       "introduction": "자기소개 내용",
       "educations": [
