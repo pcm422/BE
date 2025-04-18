@@ -17,6 +17,11 @@ class CompanyInfo(Base):
     opening_date = Column(String(10), nullable=False)  # 개업 일자
     company_intro = Column(Text, nullable=False)  # 기업 소개
     ceo_name = Column(String(50), nullable=False)  # 대표자 성함
+
+    manager_name = Column(String(50), nullable=False)  # 담당자 이름
+    manager_phone = Column(String(20), nullable=False)  # 담당자 전화번호
+    manager_email = Column(String(100), nullable=True)  # 담당자 이메일
+
     address = Column(String(100), nullable=True)  # 사업장 주소 (선택)
     company_image = Column(String(255), nullable=True)  # 회사 이미지 URL (선택)
 
