@@ -1,4 +1,5 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator  # 단일 필드 validator
+import re  # 정규식 사용
 from typing import Optional, List
 from datetime import date, datetime
 
@@ -15,12 +16,26 @@ class EducationBase(BaseModel):  # 모든 학력사항 공통 속성
 class EducationCreate(EducationBase):  # EducationBase 상속
     resumes_id: Optional[int] = None
 
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def parse_month_only_date(cls, value):
+        if isinstance(value, str) and re.match(r"^\d{4}-\d{2}$", value):
+            return f"{value}-01"
+        return value
+
 class ExperienceCreate(BaseModel):
     company_name: str = Field(..., description="회사명")  # 회사명(경력)
     position: str = Field(..., description="직무/직급")   # 직급(경력)
     start_date: Optional[date] = None   # 시작일(경력)
     end_date: Optional[date] = None  # 종료일(경력)
     description: Optional[str] = None  # 내용(경력)
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def parse_month_only_date(cls, value):
+        if isinstance(value, str) and re.match(r"^\d{4}-\d{2}$", value):
+            return f"{value}-01"
+        return value
 
 # 교육 이력 수정 요청에 사용할 입력 데이터
 class EducationUpdate(BaseModel):
