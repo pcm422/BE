@@ -20,7 +20,6 @@ from app.models.users import User # User 모델 import 추가
 # 정렬 옵션 정의 Enum
 class SortOptions(str, Enum):
     LATEST = "latest"
-    DEADLINE = "deadline"
     SALARY_HIGH = "salary_high"
     SALARY_LOW = "salary_low"
 

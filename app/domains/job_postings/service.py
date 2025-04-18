@@ -242,25 +242,26 @@ async def search_job_postings(
     # 정렬 기준(Clause) 결정
     if sort == "latest":
         order_by_clause = desc(JobPosting.created_at)
-    elif sort == "deadline":
-        order_by_clause = JobPosting.deadline_at # 기본 오름차순
     elif sort == "salary_high":
         order_by_clause = desc(JobPosting.salary)
     elif sort == "salary_low":
         order_by_clause = JobPosting.salary # 기본 오름차순
-    else: # 기본 정렬 (최신순)
+    else:
+        # 기본 정렬 기준 (예: 최신순) 또는 에러 처리
         order_by_clause = desc(JobPosting.created_at)
 
-    # 페이지네이션 offset 계산
-    skip = (page - 1) * limit
-    # 최종 목록 쿼리 (정렬, 페이지네이션 적용)
-    list_query = base_query.order_by(order_by_clause).offset(skip).limit(limit)
+    # 페이지네이션 및 정렬 적용
+    search_query = (
+        base_query
+        .order_by(order_by_clause)
+        .offset((page - 1) * limit)
+        .limit(limit)
+    )
 
-    # 쿼리 실행 및 결과 가져오기
-    result = await session.execute(list_query)
+    result = await session.execute(search_query)
     postings = list(result.scalars().all()) # 결과를 리스트로 변환
 
-    # 로그인 사용자이고 공고 목록이 있으면 즐겨찾기 정보 조회 (list_job_postings와 동일 로직)
+    # 로그인 사용자이고 공고 목록이 있으면 즐겨찾기 정보 조회
     if user_id and postings:
         posting_ids = [p.id for p in postings]
         favorite_query = select(Favorite.job_posting_id).where(
@@ -272,9 +273,11 @@ async def search_job_postings(
         favorite_result = await session.execute(favorite_query)
         favorited_posting_ids = {row[0] for row in favorite_result}
 
+        # 각 공고 객체에 is_favorited 속성 설정
         for posting in postings:
             posting.is_favorited = posting.id in favorited_posting_ids
     else:
+        # 비로그인 사용자이거나 공고가 없으면 모든 공고의 is_favorited를 None으로 설정
         for posting in postings:
             posting.is_favorited = None
 
