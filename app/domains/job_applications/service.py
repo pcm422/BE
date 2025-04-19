@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.models import JobApplication, Resume, JobPosting, CompanyUser, User
 from .schemas import ApplicationStatusEnum
 from .utils import send_email, jinja_env
+from ..resumes.router import logger
 
 
 # 사용자가 채용공고에 대해 본인의 이력서로 지원
@@ -19,29 +20,30 @@ async def create_application(
 ) -> JobApplication:
     """사용자의 이력서를 채용공고에 지원"""
     try:
-        result = await session.execute(
+        logger.info("이력서 조회 시작")
+        resume = await session.execute(
             select(Resume)
             .filter(Resume.user_id == user_id)
             .order_by(Resume.created_at.desc())
             .limit(1)
         )
-        resume = result.scalar_one_or_none()
+        resume = resume.scalar_one_or_none()
         if not resume:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "지원할 이력서가 없습니다.")
 
-        res = await session.execute(
-            select(JobPosting).filter(JobPosting.id == job_posting_id)  # 채용공고 검증
-        )
-        if res.scalar_one_or_none() is None:   # 없으면 예외
+        logger.info("채용공고 검증 시작")
+        job = await session.get(JobPosting, job_posting_id)
+        if job is None:   # 없으면 예외
             raise HTTPException(status.HTTP_404_NOT_FOUND, "채용공고가 존재하지 않습니다.")
 
-        res = await session.execute(
+        logger.info("중복 지원 검증 시작")
+        existing_app = await session.execute(
             select(JobApplication).filter(
                 JobApplication.user_id == user_id,
                 JobApplication.job_posting_id == job_posting_id,
-            )  # 중복 지원 검증
+            )
         )
-        if res.scalar_one_or_none():  # 있으면 예외
+        if existing_app.scalar_one_or_none():  # 있으면 예외
             raise HTTPException(status.HTTP_409_CONFLICT, "이미 지원한 공고입니다.")
 
         snapshot = {
@@ -81,27 +83,42 @@ async def create_application(
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        session.add(new_app)  # 신규 지원 레코드 추가
-        await session.commit()  # 세션 커밋
-        await session.refresh(new_app)  # 새로 추가된 레코드 새로 고침
-        # 이메일 발송
-        job = await session.get(JobPosting, job_posting_id)
+
+        try:
+            logger.info("신규 지원 레코드 추가 시작")
+            session.add(new_app)  # 신규 지원 레코드 추가
+            await session.commit()  # 세션 커밋
+            await session.refresh(new_app)  # 새로 추가된 레코드 새로 고침
+        except Exception as e:
+            await session.rollback()  # 세션 롤백
+            logger.warning(f"DB 커밋 중 오류: {e}")
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"지원 생성 중 오류: {str(e)}")  # 500 에러 발생
+
+        logger.info("이메일 발송 시작")
         author = await session.get(CompanyUser, job.author_id)
         applicant = await session.get(User, user_id)
 
-        if author and author.manager_email:
-            template = jinja_env.get_template("resume_email.html")
-            html = template.render(
-                job_title=job.title,
-                applicant=applicant,
-                resume=snapshot  # snapshot 대신 resume 모델 직접 넘겨도 OK
-            )
-            await send_email(
-                to_email=author.manager_email,
-                subject=f"[{job.title}] 지원자 이력서",
-                html_content=html,
-                text_content="지원자 이력서를 확인해주세요."
-            )
+        if author and author.company:
+            email = author.company.manager_email
+            if not email:
+                logger.warning(f"이메일 주소가 존재하지 않아 전송이 중단되었습니다. company_id={author.company.id}")
+            else:
+                logger.info(f"이메일 전송 시도: {email}")
+                try:
+                    template = jinja_env.get_template("resume_email.html")
+                    html = template.render(
+                        job_title=job.title,
+                        applicant=applicant,
+                        resume=snapshot,
+                    )
+                    await send_email(
+                        to_email=email,
+                        subject=f"[{job.title}] 지원자 이력서",
+                        html_content=html,
+                        text_content="지원자 이력서를 확인해주세요."
+                    )
+                except Exception as e:
+                    logger.warning(f"이메일 전송 실패: {e}")
 
         return new_app  # 생성된 지원 반환
     except HTTPException:  # HTTP 예외 발생 시
@@ -109,6 +126,9 @@ async def create_application(
     except SQLAlchemyError as e:  # SQLAlchemy 에러 발생 시
         await session.rollback()  # 세션 롤백
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"지원 생성 중 오류: {str(e)}")  # 500 에러 발생
+    except Exception as e:  # 예상치 못한 에러 발생 시
+        logger.warning(f"예상치 못한 오류 발생: {e}")
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "예상치 못한 오류 발생")  # 500 에러 발생
 
 # 사용자가 지원한 모든 공고 내역을 조회
 async def get_user_applications(
@@ -219,3 +239,6 @@ async def update_application_status(
     except SQLAlchemyError as e:  # SQLAlchemy 에러 발생 시
         await session.rollback()  # 세션 롤백
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"지원 상태 변경 중 오류: {str(e)}")  # 500 에러 발생
+    except Exception as e:  # 예상치 못한 에러 발생 시
+        logger.warning(f"예상치 못한 오류 발생: {e}")
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "예상치 못한 오류 발생")  # 500 에러 발생
