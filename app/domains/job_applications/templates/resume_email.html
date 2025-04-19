@@ -26,12 +26,13 @@
 <body>
     <div class="resume">
         <div class="header">
-            <img src="{{ resume.resume_image }}" alt="프로필 사진" class="profile-img" style="width:100px; height:120px; object-fit:cover;">
+            {% if resume.resume_image %}
+            <img src="{{ resume.resume_image }}" alt="프로필 사진" class="profile-img" style="width: 100px; height: 120px; object-fit:cover">
+            {% endif %}
             <div class="info">
-                <h1>{{ applicant.name }}</h1>
                 <ul>
+                    <li><strong>{{ applicant.name }}</strong></li>
                     <li>이메일 : {{ applicant.email }}</li>
-                    <li>성별   : {{ applicant.gender or '-' }}</li>
                     <li>생년월일 : {{ applicant.birthday or '-' }}</li>
                     <li>전화번호 : {{ applicant.phone_number or '-' }}</li>
                 </ul>
