@@ -2,7 +2,7 @@ from enum import Enum
 
 from sqlalchemy import Boolean, Column, Date, DateTime
 from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import ForeignKey, Integer, String, Text, Float
 from sqlalchemy.orm import relationship
 
 # 유틸리티 함수 임포트
@@ -93,6 +93,9 @@ class JobPosting(Base):
     work_days = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     postings_image = Column(String(255), nullable=False)
+
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=get_now_kst)
     updated_at = Column(DateTime(timezone=True), default=get_now_kst, onupdate=get_now_kst)
