@@ -19,6 +19,50 @@ from sqlalchemy import select
 from app.core.db import AsyncSessionFactory
 from app.models.job_experience import ResumeExperience
 import bcrypt
+import datetime
+from zoneinfo import ZoneInfo 
+
+# 한국 시간대 정의
+KST = ZoneInfo("Asia/Seoul")
+
+def format_datetime_kst(model, name: str) -> str:
+    """
+    datetime 객체를 문자열로 포맷합니다.
+    'created_at', 'updated_at' 필드는 KST로 간주/변환하여 포맷합니다.
+    다른 datetime 필드는 시간대 정보가 있으면 해당 시간대로, 없으면 naive 상태로 포맷합니다.
+    date 필드는 'YYYY-MM-DD' 형식으로 포맷합니다.
+    """
+    value = getattr(model, name, None)
+    if value is None:
+        return ""
+
+    if isinstance(value, datetime.datetime):
+        if name in ('created_at', 'updated_at'):
+            # created_at, updated_at: KST 처리
+            dt_kst: datetime.datetime
+            if value.tzinfo is None:
+                # naive datetime은 KST로 간주
+                dt_kst = value.replace(tzinfo=KST)
+                # 만약 naive UTC로 저장되었다면:
+                # dt_kst = value.replace(tzinfo=datetime.timezone.utc).astimezone(KST)
+            else:
+                # timezone-aware면 KST로 변환
+                dt_kst = value.astimezone(KST)
+            return dt_kst.strftime("%Y-%m-%d %H:%M:%S %Z")
+        else:
+            # 다른 datetime 필드: 시간대 정보 유지 또는 naive 포맷
+            if value.tzinfo is None:
+                # naive datetime
+                return value.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                # timezone-aware datetime (그대로 표시)
+                # 필요시 %Z 대신 다른 포맷 사용 가능
+                return value.strftime("%Y-%m-%d %H:%M:%S %Z")
+    elif isinstance(value, datetime.date):
+        # date 필드
+        return value.strftime("%Y-%m-%d")
+    else:
+        return str(value)
 
 # 비밀번호 암호화 믹스인 클래스
 class PasswordHashMixin:
@@ -92,7 +136,7 @@ class BaseAdmin(ModelView):
 
 class UserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=User):
     # 필요한 핵심 컬럼만 표시
-    column_list = ["id", "name", "email", "phone_number", "is_active", "created_at"]
+    column_list = ["id", "name", "email", "phone_number", "is_active", "created_at", "updated_at"]
     column_searchable_list = ["name", "email"]
     # 선택적 관계 로딩을 위한 설정
     column_selectinload_list = [User.favorites, User.applications]
@@ -110,13 +154,18 @@ class UserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=User):
         "signup_purpose": "가입 목적",
         "referral_source": "유입경로",
         "is_active": "이메일 활성상태",
-        "created_at": "가입일",
-        "updated_at": "수정일"
+        "created_at": "가입일 (KST)",
+        "updated_at": "수정일 (KST)"
+    }
+    column_formatters = {
+        "birthday": format_datetime_kst,
+        "created_at": format_datetime_kst,
+        "updated_at": format_datetime_kst,
     }
 
 class JobPostingAdmin(BaseAdmin, model=JobPosting):
     # 필요한 핵심 컬럼만 표시
-    column_list = ["id", "title", "company_id", "recruit_period_start", "recruit_period_end", "job_category", "created_at"]
+    column_list = ["id", "title", "company_id", "recruit_period_start", "recruit_period_end", "job_category", "created_at", "updated_at", "deadline_at"]
     column_searchable_list = ["title"]
     # 선택적 관계 로딩을 위한 설정
     column_selectinload_list = [JobPosting.author, JobPosting.company]
@@ -147,12 +196,19 @@ class JobPostingAdmin(BaseAdmin, model=JobPosting):
         "work_days": "근무요일/스케줄",
         "description": "공고상세내용",
         "postings_image": "공고이미지",
-        "created_at": "작성일",
-        "updated_at": "수정일",
+        "created_at": "작성일 (KST)",
+        "updated_at": "수정일 (KST)",
         "author": "작성자",
         "company": "회사",
         "favorites": "즐겨찾기",
         "applications": "지원 내역"
+    }
+    column_formatters = {
+        "recruit_period_start": format_datetime_kst,
+        "recruit_period_end": format_datetime_kst,
+        "deadline_at": format_datetime_kst,
+        "created_at": format_datetime_kst,
+        "updated_at": format_datetime_kst,
     }
     
 class FavoriteAdmin(BaseAdmin, model=Favorite):
@@ -167,9 +223,12 @@ class FavoriteAdmin(BaseAdmin, model=Favorite):
         "id": "번호",
         "user_id": "회원",
         "job_posting_id": "공고",
-        "created_at": "작성일",
+        "created_at": "작성일 (KST)",
         "user": "회원",
         "job_posting": "공고"
+    }
+    column_formatters = {
+        "created_at": format_datetime_kst,
     }
     
 class AdminUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=AdminUser):
@@ -186,7 +245,7 @@ class AdminUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=A
     
 class CompanyInfoAdmin(BaseAdmin, model=CompanyInfo):
     # 필요한 핵심 컬럼만 표시
-    column_list = ["id", "company_name", "business_reg_number", "ceo_name", "address"]
+    column_list = ["id", "company_name", "business_reg_number", "ceo_name", "address", "opening_date"]
     column_searchable_list = ["company_name"]
     # 선택적 관계 로딩을 위한 설정
     column_selectinload_list = [CompanyInfo.job_postings, CompanyInfo.company_users]
@@ -204,10 +263,13 @@ class CompanyInfoAdmin(BaseAdmin, model=CompanyInfo):
         "job_postings": "작성한 공고",
         "company_users": "담당자"
     }
+    column_formatters = {
+        "opening_date": format_datetime_kst,
+    }
     
 class CompanyUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=CompanyUser):
     # 필요한 핵심 컬럼만 표시
-    column_list = ["id", "company_id", "email", "created_at"]
+    column_list = ["id", "company_id", "email", "created_at", "updated_at"]
     column_searchable_list = ["email"]
     # 선택적 관계 로딩을 위한 설정
     column_selectinload_list = [CompanyUser.company, CompanyUser.job_postings]
@@ -217,16 +279,20 @@ class CompanyUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model
         "id": "번호",
         "company_id": "기업 번호",
         "password": "비밀번호",
-        "created_at": "가입일",
-        "updated_at": "수정일",
+        "created_at": "가입일 (KST)",
+        "updated_at": "수정일 (KST)",
         "email": "로그인 이메일",
         "company": "소속 회사",
         "job_postings": "작성한 공고"
     }
+    column_formatters = {
+        "created_at": format_datetime_kst,
+        "updated_at": format_datetime_kst,
+    }
     
 class JobApplicationAdmin(BaseAdmin, model=JobApplication):
     # 필요한 핵심 컬럼만 표시
-    column_list = ["id", "user_id", "job_posting_id", "status", "created_at"]
+    column_list = ["id", "user_id", "job_posting_id", "status", "created_at", "updated_at"]
     column_searchable_list = ["user_id", "job_posting_id"]
     # 선택적 관계 로딩을 위한 설정
     column_selectinload_list = [JobApplication.user, JobApplication.job_posting]
@@ -237,15 +303,19 @@ class JobApplicationAdmin(BaseAdmin, model=JobApplication):
         "user_id": "회원",
         "job_posting_id": "공고",
         "status": "상태",
-        "created_at": "작성일",
-        "updated_at": "수정일",
+        "created_at": "작성일 (KST)",
+        "updated_at": "수정일 (KST)",
         "user": "회원",
         "job_posting": "공고"
+    }
+    column_formatters = {
+        "created_at": format_datetime_kst,
+        "updated_at": format_datetime_kst,
     }
     
 class ResumeAdmin(BaseAdmin, model=Resume):
     # 필요한 핵심 컬럼만 표시
-    column_list = ["id", "user_id", "company_name", "position", "desired_area", "created_at"]
+    column_list = ["id", "user_id", "company_name", "position", "desired_area", "created_at", "updated_at", "work_period_start", "work_period_end"]
     column_searchable_list = ["company_name"]
     # 선택적 관계 로딩을 위한 설정
     column_selectinload_list = [Resume.user, Resume.educations]
@@ -261,15 +331,21 @@ class ResumeAdmin(BaseAdmin, model=Resume):
         "work_period_end": "근무 종료일",
         "desired_area": "희망 지역",
         "introduction": "자기소개",
-        "created_at": "작성일",
-        "updated_at": "수정일",
+        "created_at": "작성일 (KST)",
+        "updated_at": "수정일 (KST)",
         "user": "회원",
         "educations": "학력"
+    }
+    column_formatters = {
+        "work_period_start": format_datetime_kst,
+        "work_period_end": format_datetime_kst,
+        "created_at": format_datetime_kst,
+        "updated_at": format_datetime_kst,
     }
     
 class ResumeEducationAdmin(BaseAdmin, model=ResumeEducation):
     # 필요한 핵심 컬럼만 표시
-    column_list = ["id", "resumes_id", "education_type", "school_name", "major", "education_status"]
+    column_list = ["id", "resumes_id", "education_type", "school_name", "major", "education_status", "start_date", "end_date", "created_at", "updated_at"]
     column_searchable_list = ["school_name"]
     # 선택적 관계 로딩을 위한 설정
     column_selectinload_list = [ResumeEducation.resume]
@@ -286,13 +362,19 @@ class ResumeEducationAdmin(BaseAdmin, model=ResumeEducation):
         "start_date": "시작일",
         "end_date": "종료일",
         "resume": "이력서",
-        "created_at": "작성일",
-        "updated_at": "수정일"
+        "created_at": "작성일 (KST)",
+        "updated_at": "수정일 (KST)"
+    }
+    column_formatters = {
+        "start_date": format_datetime_kst,
+        "end_date": format_datetime_kst,
+        "created_at": format_datetime_kst,
+        "updated_at": format_datetime_kst,
     }
     
 class ResumeExperienceAdmin(BaseAdmin, model=ResumeExperience):
     # 필요한 핵심 컬럼만 표시
-    column_list = ["id", "resume_id", "company_name", "position", "start_date", "end_date"]
+    column_list = ["id", "resume_id", "company_name", "position", "start_date", "end_date", "created_at", "updated_at"]
     column_searchable_list = ["company_name", "position"]
     # 선택적 관계 로딩을 위한 설정
     column_selectinload_list = [ResumeExperience.resume]
@@ -306,9 +388,15 @@ class ResumeExperienceAdmin(BaseAdmin, model=ResumeExperience):
         "start_date": "근무 시작일",
         "end_date": "근무 종료일",
         "description": "상세 업무 내용",
-        "created_at": "작성일",
-        "updated_at": "수정일",
+        "created_at": "작성일 (KST)",
+        "updated_at": "수정일 (KST)",
         "resume": "이력서"
+    }
+    column_formatters = {
+        "start_date": format_datetime_kst,
+        "end_date": format_datetime_kst,
+        "created_at": format_datetime_kst,
+        "updated_at": format_datetime_kst,
     }
     
 class InterestAdmin(BaseAdmin, model=Interest):
