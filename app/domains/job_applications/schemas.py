@@ -1,4 +1,6 @@
 from datetime import datetime
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 from app.models.job_applications import ApplicationStatusEnum
@@ -18,6 +20,7 @@ class JobApplicationRead(BaseModel):
     job_posting_id: int              # 지원된 채용공고 PK
     resumes_data: dict = Field(..., description="지원 시점 이력서 데이터")
     status: ApplicationStatusEnum    # 지원 상태
+    email_sent: Optional[bool] = Field(default=True, description="이메일 발송 성공 여부 (기본 True)") # 이메일 발송 여부
     created_at: datetime             # 생성 시각
     updated_at: datetime             # 수정 시각
 

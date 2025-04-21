@@ -19,13 +19,15 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
 # 국세청 api 키
 BRN_API_KEY = os.getenv("BRN_API_KEY")
 
-# # 이메일 전송 관련 환경 변수
-# EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.naver.com")
-# EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
-# EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "True") == "True"
-# EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-# DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
-#
-# # 이메일 인증/비밀번호 재설정 링크에서 사용할 사이트 URL
-# SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
+# 이메일 전송 관련 환경 변수
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.naver.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "True") == "True"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
+if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+    raise ValueError("SMTP 인증 정보가 설정되지 않았습니다.")
+
+# 이메일 인증/비밀번호 재설정 링크에서 사용할 사이트 URL
+SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
