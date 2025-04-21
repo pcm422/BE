@@ -1,6 +1,6 @@
 import enum
 from datetime import date, datetime
-from typing import Any, Type, TypeVar, Optional
+from typing import Any, Type, TypeVar, Optional, List
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator, Field
 from fastapi import Form, HTTPException, status
@@ -72,6 +72,17 @@ def _parse_enum(enum_class: Type[TEnum], value: str | None, field_name: str) -> 
         valid_options = ", ".join([m.name for m in enum_class]) + " 또는 " + ", ".join([m.value for m in enum_class])
         raise ValueError(f"유효하지 않은 {field_name} 값: {value}. 가능한 값: {valid_options}")
 
+def _parse_float(float_str: str | None, field_name: str) -> float | None:
+    """문자열을 실수 객체로 변환"""
+    if float_str is None:
+        return None # 빈 값이면 None 반환
+    try:
+        # 문자열을 float으로 변환
+        return float(float_str)
+    except ValueError:
+        # 변환 실패 시 에러 발생
+        raise ValueError(f"{field_name}은(는) 숫자(실수)여야 합니다")
+
 
 # --- Pydantic Schemas ---
 
@@ -97,6 +108,8 @@ class JobPostingBase(BaseModel):
     work_days: Optional[str] = Field(None, description="근무 요일/스케줄")
     description: Optional[str] = Field(None, description="상세 설명")
     postings_image: Optional[str] = Field(None, description="공고 이미지 URL")
+    latitude: Optional[float] = Field(None, description="근무지 위도")
+    longitude: Optional[float] = Field(None, description="근무지 경도")
 
     # ORM 모델 -> Pydantic 모델 자동 변환 활성화
     model_config = ConfigDict(from_attributes=True)
@@ -121,6 +134,8 @@ class JobPostingCreate(JobPostingBase):
     work_days: str = Field(..., description="근무 요일/스케줄")
     description: str = Field(..., description="상세 설명")
     postings_image: Optional[str] = Field(None, description="공고 이미지 URL (선택)")
+    latitude: Optional[float] = Field(None, description="근무지 위도 (선택)")
+    longitude: Optional[float] = Field(None, description="근무지 경도 (선택)")
 
     @model_validator(mode='after')
     def validate_model(self) -> 'JobPostingCreate':
@@ -188,7 +203,7 @@ class JobPostingUpdate(JobPostingBase):
 
 class PaginatedJobPostingResponse(BaseModel):
     # 페이지네이션된 목록 응답 형식 정의
-    items: list[JobPostingResponse] # 실제 데이터 목록
+    items: list[JobPostingResponse] # 실제 데이터 목록 (List 타입 힌트 사용)
     total: int                      # 전체 아이템 개수
     skip: int                       # 건너뛴 아이템 개수
     limit: int                      # 페이지당 아이템 개수
@@ -221,6 +236,8 @@ class JobPostingCreateFormData:
         salary: Optional[str] = Form(None, description="급여 (숫자)"),
         work_days: Optional[str] = Form(None, description="근무 요일/스케줄"),
         description: Optional[str] = Form(None, description="상세 설명"),
+        latitude: Optional[str] = Form(None, description="근무지 위도 (숫자)"),
+        longitude: Optional[str] = Form(None, description="근무지 경도 (숫자)"),
     ):
         # 주입받은 Form 데이터들을 인스턴스 변수에 저장
         self.title = title
@@ -242,11 +259,13 @@ class JobPostingCreateFormData:
         self.salary = salary
         self.work_days = work_days
         self.description = description
+        self.latitude = latitude
+        self.longitude = longitude
 
     def parse_to_job_posting_create(self, postings_image_url: str | None) -> 'JobPostingCreate':
         """
         Form 데이터 필드를 검증하고 JobPostingCreate Pydantic 모델로 변환한다.
-        각 필드 타입에 맞는 파싱 함수(_parse_date, _parse_int, _parse_enum)를 사용한다.
+        각 필드 타입에 맞는 파싱 함수(_parse_date, _parse_int, _parse_enum, _parse_float)를 사용한다.
         파싱 중 에러 발생 시 HTTPException으로 변환하여 FastAPI에 전달한다.
         """
         parsed_data = {}
@@ -335,6 +354,16 @@ class JobPostingCreateFormData:
         # 이미지 URL 추가
         parsed_data["postings_image"] = postings_image_url
 
+        # 위도, 경도 파싱 (선택적)
+        try:
+            parsed_data["latitude"] = _parse_float(self.latitude, "위도")
+        except ValueError as e:
+            errors["latitude"] = str(e)
+
+        try:
+            parsed_data["longitude"] = _parse_float(self.longitude, "경도")
+        except ValueError as e:
+            errors["longitude"] = str(e)
 
         # 에러가 하나라도 있으면 HTTPException 발생
         if errors:
