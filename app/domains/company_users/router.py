@@ -3,28 +3,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
 from app.core.utils import get_current_company_user
-from app.domains.company_users.schemas import (
-    CompanyUserInfo,
-    CompanyUserLoginRequest,
-    CompanyUserLoginResponse,
-    CompanyUserRegisterRequest,
-    CompanyUserRegisterResponse,
-    CompanyUserResponse,
-    CompanyUserUpdateRequest,
-    CompanyUserUpdateResponse,
-    FindCompanyUserEmail,
-    ResetCompanyUserPassword,
-    SuccessResponse,
-)
-from app.domains.company_users.service import (
-    delete_company_user,
-    find_company_user_email,
-    get_company_user_mypage,
-    login_company_user,
-    register_company_user,
-    reset_company_user_password,
-    update_company_user,
-)
+from app.domains.company_users.schemas import (CompanyUserInfo,
+                                               CompanyUserLoginRequest,
+                                               CompanyUserLoginResponse,
+                                               CompanyUserRegisterRequest,
+                                               CompanyUserRegisterResponse,
+                                               CompanyUserUpdateRequest,
+                                               CompanyUserUpdateResponse,
+                                               FindCompanyUserEmail,
+                                               ResetCompanyUserPassword,
+                                               SuccessResponse)
+from app.domains.company_users.service import (delete_company_user,
+                                               find_company_user_email,
+                                               get_company_user_mypage,
+                                               login_company_user,
+                                               register_company_user,
+                                               reset_company_user_password,
+                                               update_company_user)
 from app.domains.company_users.utiles import success_response
 from app.domains.users.service import create_access_token, create_refresh_token
 from app.models import CompanyUser
@@ -37,7 +32,7 @@ router = APIRouter(prefix="/company", tags=["Company Users"])  # URL 앞 부분
     "/register",
     summary="기업 회원 가입",
     status_code=status.HTTP_201_CREATED,
-    response_model=SuccessResponse[CompanyUserResponse],
+    response_model=SuccessResponse[CompanyUserRegisterResponse],
     responses={
         201: {"description": "회원가입 성공"},
         409: {"description": "중복 이메일 또는 중복된 사업자등록번호"},
