@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 # 인증된 현재 사용자 의존성 확인
-@router.get("/user/me", tags=["User"])
+@router.get("/user/me", tags=["사용자"])
 async def read_current_user(
     Authorization: str = Header(...), db=Depends(get_db_session)
 ):
@@ -50,7 +50,7 @@ async def read_current_user(
 
 
 # 회원가입
-@router.post("/user/register", tags=["User"])
+@router.post("/user/register", tags=["사용자"])
 async def register(user_data: UserRegister, db=Depends(get_db_session)):
     """
     새로운 사용자를 등록하는 엔드포인트입니다.
@@ -61,7 +61,7 @@ async def register(user_data: UserRegister, db=Depends(get_db_session)):
 
 
 # 로그인
-@router.post("/user/login", tags=["User"])
+@router.post("/user/login", tags=["사용자"])
 async def login(user_credentials: UserLogin, db=Depends(get_db_session)):
     """
     사용자가 로그인하는 엔드포인트입니다.
@@ -72,7 +72,7 @@ async def login(user_credentials: UserLogin, db=Depends(get_db_session)):
 
 
 # 로그아웃
-@router.post("/user/logout", tags=["User"])
+@router.post("/user/logout", tags=["사용자"])
 async def logout(Authorization: str = Header(...)):
     """
     사용자가 로그아웃하는 엔드포인트입니다.
@@ -83,7 +83,7 @@ async def logout(Authorization: str = Header(...)):
 
 
 # 사용자 프로필 업데이트
-@router.patch("/user/{user_id}", tags=["User"])
+@router.patch("/user/{user_id}", tags=["사용자"])
 async def update(
     user_id: int,
     update_data: UserProfileUpdate,
@@ -101,7 +101,7 @@ async def update(
 
 
 # 회원 탈퇴
-@router.delete("/user/{user_id}", tags=["User"])
+@router.delete("/user/{user_id}", tags=["사용자"])
 async def delete(
     user_id: int,
     current_user: User = Depends(read_current_user),
@@ -129,7 +129,7 @@ async def refresh_token(token_data: TokenRefreshRequest, db=Depends(get_db_sessi
 
 
 # 사용자 정보 조회
-@router.get("/user/{user_id}", tags=["User"])
+@router.get("/user/{user_id}", tags=["사용자"])
 async def get_user(
     user_id: int,
     current_user: User = Depends(read_current_user),
@@ -146,7 +146,7 @@ async def get_user(
 
 
 # 비밀번호 재설정
-@router.post("/user/reset-password", tags=["User"])
+@router.post("/user/reset-password", tags=["사용자"])
 async def reset_pw(data: PasswordReset, db=Depends(get_db_session)):
     """
     사용자의 비밀번호를 재설정하는 엔드포인트입니다.
@@ -157,7 +157,7 @@ async def reset_pw(data: PasswordReset, db=Depends(get_db_session)):
 
 
 # 관심분야 기반 추천 채용공고 제공
-@router.get("/user/recommend", tags=["User"])
+@router.get("/user/recommend", tags=["사용자"])
 async def recommend(
     current_user: User = Depends(read_current_user), db=Depends(get_db_session)
 ):
