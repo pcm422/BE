@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from enum import Enum
 
 from sqlalchemy import Column, DateTime, JSON
@@ -6,6 +5,8 @@ from sqlalchemy import Enum as SQLAEnum
 from sqlalchemy import ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import relationship
 
+# 유틸리티 함수 임포트
+from app.core.datetime_utils import get_now_kst
 from app.models.base import Base
 
 
@@ -36,11 +37,11 @@ class JobApplication(Base):
         default=ApplicationStatusEnum.applied,
     )
 
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    created_at = Column(DateTime(timezone=True), default=get_now_kst)
     updated_at = Column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        default=get_now_kst,
+        onupdate=get_now_kst,
     )
 
     # 관계

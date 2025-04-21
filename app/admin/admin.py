@@ -68,43 +68,6 @@ class BaseAdmin(ModelView):
     # 선택적으로 로드할 관계 필드 목록 (기본값은 빈 리스트)
     column_selectinload_list = []
     
-    async def insert_model(self, request, data):
-        async with AsyncSessionFactory() as session:
-            try:
-                # 부모 클래스의 기본 insert_model 메서드를 활용하여 관계 처리 로직 단순화
-                obj = self.model(**data)
-                session.add(obj)
-                await session.commit()
-                await session.refresh(obj)
-                return obj
-            except Exception as e:
-                await session.rollback()
-                raise e
-
-    async def update_model(self, request, id, data):
-        async with AsyncSessionFactory() as session:
-            try:
-                # 선택적으로 필요한 관계만 로드
-                stmt = select(self.model).where(self.model.id == id)
-                
-                # 명시적으로 지정된 관계만 selectinload
-                for rel in self.column_selectinload_list:
-                    stmt = stmt.options(selectinload(rel))
-                
-                result = await session.execute(stmt)
-                obj = result.scalar_one()
-                
-                # 모든 필드를 한 번에 업데이트
-                for key, value in data.items():
-                    setattr(obj, key, value)
-                
-                await session.commit()
-                await session.refresh(obj)
-                return obj
-            except Exception as e:
-                await session.rollback()
-                raise e
-
     async def get_list(self):
         async with AsyncSessionFactory() as session:
             stmt = select(self.model)
@@ -244,8 +207,8 @@ class CompanyInfoAdmin(BaseAdmin, model=CompanyInfo):
     
 class CompanyUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=CompanyUser):
     # 필요한 핵심 컬럼만 표시
-    column_list = ["id", "company_id", "manager_name", "manager_email", "created_at"]
-    column_searchable_list = ["manager_name"]
+    column_list = ["id", "company_id", "email", "created_at"]
+    column_searchable_list = ["email"]
     # 선택적 관계 로딩을 위한 설정
     column_selectinload_list = [CompanyUser.company, CompanyUser.job_postings]
     name = "기업 담당자"
@@ -254,9 +217,6 @@ class CompanyUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model
         "id": "번호",
         "company_id": "기업 번호",
         "password": "비밀번호",
-        "manager_name": "담당자 이름",
-        "manager_phone": "담당자 전화번호",
-        "manager_email": "담당자 이메일",
         "created_at": "가입일",
         "updated_at": "수정일",
         "email": "로그인 이메일",
