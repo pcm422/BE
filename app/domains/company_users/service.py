@@ -3,18 +3,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.domains.company_users.schemas import (
-    CompanyUserBase,
-    CompanyUserUpdateRequest,
-    CompanyUserUpdateResponse,
-    FindCompanyUserEmail,
-    ResetCompanyUserPassword, CompanyUserRegisterRequest, CompanyUserInfo, JobPostingsSummary,
-)
-from app.domains.company_users.utiles import (
-    check_password_match,
-    hash_password,
-    verify_password,
-)
+from app.domains.company_users.schemas import (CompanyUserBase,
+                                               CompanyUserInfo,
+                                               CompanyUserRegisterRequest,
+                                               CompanyUserUpdateRequest,
+                                               CompanyUserUpdateResponse,
+                                               FindCompanyUserEmail,
+                                               JobPostingsSummary,
+                                               ResetCompanyUserPassword)
+from app.domains.company_users.utiles import (check_password_match,
+                                              hash_password, verify_password)
 from app.models import CompanyInfo, CompanyUser
 
 
@@ -133,31 +131,29 @@ async def get_company_user_mypage(db: AsyncSession, current_user: CompanyUser):
         )
     company = user.company
     data = {
-        "company_user_id":      user.id,
-        "email":                user.email,
-        "company_name":         company.company_name,
-        "company_id":           company.id,
-        "manager_name":         company.manager_name,
-        "manager_email":        company.manager_email,
-        "manager_phone":        company.manager_phone,
-        "company_intro":        company.company_intro,
-        "business_reg_number":  company.business_reg_number,
-        "opening_date":         company.opening_date,
-        "ceo_name":             company.ceo_name,
-        "address":              company.address,
-        "company_image":        company.company_image,
+        "company_user_id": user.id,
+        "email": user.email,
+        "company_name": company.company_name,
+        "company_id": company.id,
+        "manager_name": company.manager_name,
+        "manager_email": company.manager_email,
+        "manager_phone": company.manager_phone,
+        "company_intro": company.company_intro,
+        "business_reg_number": company.business_reg_number,
+        "opening_date": company.opening_date,
+        "ceo_name": company.ceo_name,
+        "address": company.address,
+        "company_image": company.company_image,
         "job_postings": [
-            JobPostingsSummary.from_orm(jp).dict()
-            for jp in user.job_postings
+            JobPostingsSummary.from_orm(jp).dict() for jp in user.job_postings
         ],
     }
     return data
 
+
 # 기업 회원 정보 수정
 async def update_company_user(
-    db: AsyncSession,
-    payload: CompanyUserUpdateRequest,
-    current_user: CompanyUser
+    db: AsyncSession, payload: CompanyUserUpdateRequest, current_user: CompanyUser
 ):
     has_changes = False
 
@@ -201,6 +197,7 @@ async def update_company_user(
         "company_image": company.company_image,
     }
     return result
+
 
 # 기업 회원 탈퇴
 async def delete_company_user(db: AsyncSession, current_user: CompanyUser):

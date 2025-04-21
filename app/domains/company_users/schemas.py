@@ -1,7 +1,8 @@
 from datetime import date
 from typing import Generic, List, Optional, TypeVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, constr, field_validator
+from pydantic import (BaseModel, ConfigDict, EmailStr, Field, constr,
+                      field_validator)
 
 
 ### 기업 회원 공통 베이스
@@ -82,8 +83,8 @@ class JobPostingsSummary(BaseModel):  # 공고 요약
     title: str
     work_address: str
     is_always_recruiting: bool
-    recruit_period_start : date
-    recruit_period_end : date
+    recruit_period_start: date
+    recruit_period_end: date
     model_config = ConfigDict(from_attributes=True)
 
 
