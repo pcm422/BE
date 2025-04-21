@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import JobApplication, Resume, JobPosting, CompanyUser, User
 from .schemas import ApplicationStatusEnum
-from .utils import send_email, jinja_env
+from .utils import build_resume_snapshot, send_resume_email
 from ..resumes.router import logger
 
 
@@ -45,33 +45,7 @@ async def create_application(
         if existing_app.scalar_one_or_none():  # 있으면 예외
             raise HTTPException(status.HTTP_409_CONFLICT, "이미 지원한 공고입니다.")
 
-        snapshot = {
-            "resume_image": resume.resume_image,
-            "desired_area": resume.desired_area,
-            "introduction": resume.introduction,
-            # 학력
-            "educations": [
-                {
-                    "education_type": edu.education_type,
-                    "school_name": edu.school_name,
-                    "education_status": edu.education_status,
-                    "start_date": edu.start_date.isoformat() if edu.start_date else None,
-                    "end_date": edu.end_date.isoformat() if edu.end_date else None,
-                }
-                for edu in resume.educations
-            ],
-            # 경력
-            "experiences": [
-                {
-                    "company_name": exp.company_name,
-                    "position": exp.position,
-                    "start_date": exp.start_date.isoformat() if exp.start_date else None,
-                    "end_date": exp.end_date.isoformat() if exp.end_date else None,
-                    "description": exp.description,
-                }
-                for exp in resume.experiences
-            ],
-        }
+        snapshot = build_resume_snapshot(resume)
 
         new_app = JobApplication(   # 지원내역 생성
             user_id=user_id,
@@ -101,21 +75,12 @@ async def create_application(
                 logger.warning(f"이메일 주소가 존재하지 않아 전송이 중단되었습니다. company_id={author.company.id}")
             else:
                 logger.info(f"이메일 전송 시도: {email}")
-                try:
-                    template = jinja_env.get_template("resume_email.html")
-                    html = template.render(
-                        job_title=job.title,
-                        applicant=applicant,
-                        resume=snapshot,
-                    )
-                    await send_email(
-                        to_email=email,
-                        subject=f"[{job.title}] 지원자 이력서",
-                        html_content=html,
-                        text_content="지원자 이력서를 확인해주세요."
-                    )
-                except Exception as e:
-                    logger.warning(f"이메일 전송 실패: {e}")
+                await send_resume_email(
+                    job_title=job.title,
+                    applicant=applicant,
+                    resume=snapshot,
+                    to_email=email
+                )
 
         return new_app  # 생성된 지원 반환
     except HTTPException:  # HTTP 예외 발생 시

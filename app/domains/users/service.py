@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import jwt
 from dotenv import load_dotenv
 from fastapi import HTTPException
-import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -12,20 +11,11 @@ from app.models import Interest, User, UserInterest
 
 from .schemas import (PasswordReset, TokenRefreshRequest, UserLogin,
                       UserProfileUpdate, UserRegister)
+from ..company_users.utiles import verify_password
 from ...core.config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES
+from ...core.utils import hash_password
 
 load_dotenv()
-
-
-def get_password_hash(password: str) -> str:
-    # bcrypt 라이브러리를 직접 사용하여 해시
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-    return hashed.decode("utf-8")
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # bcrypt.hashpw로 검증
-    return bcrypt.hashpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8")).decode("utf-8") == hashed_password
 
 
 # JWT 토큰 생성 함수들
@@ -73,7 +63,7 @@ async def register_user(db: AsyncSession, user_data: UserRegister) -> dict:
     new_user = User(
         name=user_data.name,  # 이름 할당
         email=user_data.email,  # 이메일 할당
-        password=get_password_hash(user_data.password),  # 비밀번호 해시 후 할당
+        password=hash_password(user_data.password),  # 비밀번호 해시 후 할당
         phone_number=user_data.phone_number,  # 전화번호 할당
         birthday=user_data.birthday,  # 생년월일 할당
         gender=user_data.gender,  # 성별 할당
@@ -195,7 +185,7 @@ async def update_user(
     if update_data.name is not None:
         user.name = update_data.name  # 이름 업데이트
     if update_data.password is not None:
-        user.password = get_password_hash(update_data.password)  # 비밀번호 해시 후 업데이트
+        user.password = hash_password(update_data.password)  # 비밀번호 해시 후 업데이트
     if update_data.phone_number is not None:
         user.phone_number = update_data.phone_number  # 전화번호 업데이트
     if update_data.birthday is not None:
@@ -339,7 +329,7 @@ async def reset_password(db: AsyncSession, data: PasswordReset) -> dict:
     if not user:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
     # 새로운 비밀번호 해시 처리 후 업데이트
-    user.password = get_password_hash(data.new_password)  # 176
+    user.password = hash_password(data.new_password)  # 176
     await db.commit()  # 변경사항 커밋
     return {"status": "success", "message": "비밀번호가 재설정되었습니다."}  # 결과 반환
 

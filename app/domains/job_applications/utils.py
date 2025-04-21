@@ -8,6 +8,7 @@ from app.core.config import (
     EMAIL_HOST, EMAIL_PORT, EMAIL_USE_SSL,
     EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL
 )
+from app.models import Resume
 
 # 템플릿 로더: 프로젝트 루트 기준으로 app/templates 디렉터리 사용
 jinja_env = Environment(
@@ -43,3 +44,53 @@ async def send_email(
         use_tls=EMAIL_USE_SSL,
     )
 
+
+def build_resume_snapshot(resume: Resume) -> dict:
+    return {
+        "resume_image": resume.resume_image,
+        "desired_area": resume.desired_area,
+        "introduction": resume.introduction,
+        "educations": [
+            {
+                "education_type": edu.education_type,
+                "school_name": edu.school_name,
+                "education_status": edu.education_status,
+                "start_date": edu.start_date.isoformat() if edu.start_date else None,
+                "end_date": edu.end_date.isoformat() if edu.end_date else None,
+            }
+            for edu in resume.educations
+        ],
+        "experiences": [
+            {
+                "company_name": exp.company_name,
+                "position": exp.position,
+                "start_date": exp.start_date.isoformat() if exp.start_date else None,
+                "end_date": exp.end_date.isoformat() if exp.end_date else None,
+                "description": exp.description,
+            }
+            for exp in resume.experiences
+        ],
+    }
+
+async def send_resume_email(
+    job_title: str,
+    applicant: dict,
+    resume: dict,
+    to_email: str,
+) -> None:
+    try:
+        template = jinja_env.get_template("resume_email.html")
+        html = template.render(
+            job_title=job_title,
+            applicant=applicant,
+            resume=resume,
+        )
+        await send_email(
+            to_email=to_email,
+            subject=f"[{job_title}] 지원자 이력서",
+            html_content=html,
+            text_content="지원자 이력서를 확인해주세요.",
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"이메일 전송 실패: {e}")
