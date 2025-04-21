@@ -80,10 +80,10 @@ class SuccessResponse(BaseModel, Generic[T]):
 class JobPostingsSummary(BaseModel):  # 공고 요약
     id: int
     title: str
-    work_address: Optional[str]
+    work_address: str
     is_always_recruiting: bool
-    recruit_period_start: Optional[date] = None
-    recruit_period_end: Optional[date] = None
+    recruit_period_start : date
+    recruit_period_end : date
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -91,26 +91,6 @@ class CompanyUserRegisterResponse(BaseModel):
     company_user_id: int
     email: EmailStr
     company_name: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class CompanyUserResponse(BaseModel):  # 기업 유저 정보
-    company_user_id: int
-    email: EmailStr
-
-    manager_name: str
-    manager_email: EmailStr
-    manager_phone: str
-
-    company_id: int
-    company_name: str
-    company_intro: str
-    business_reg_number: str
-    opening_date: str
-    ceo_name: str
-    address: Optional[str] = None
-    company_image: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -141,5 +121,20 @@ class CompanyUserUpdateResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class CompanyUserInfo(CompanyUserResponse):
+class CompanyUserInfo(BaseModel):
+    company_user_id: int
+    email: EmailStr
+    company_id: int
+    company_name: str
+    manager_name: str
+    manager_email: EmailStr
+    manager_phone: str
+    business_reg_number: str
+    opening_date: str
+    ceo_name: str
+    company_intro: str
+    address: Optional[str] = None
+    company_image: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
     job_postings: List[JobPostingsSummary] = Field(default_factory=list)

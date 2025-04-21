@@ -9,7 +9,6 @@ from app.domains.company_users.schemas import (
     CompanyUserLoginResponse,
     CompanyUserRegisterRequest,
     CompanyUserRegisterResponse,
-    CompanyUserResponse,
     CompanyUserUpdateRequest,
     CompanyUserUpdateResponse,
     FindCompanyUserEmail,
@@ -37,7 +36,7 @@ router = APIRouter(prefix="/company", tags=["Company Users"])  # URL 앞 부분
     "/register",
     summary="기업 회원 가입",
     status_code=status.HTTP_201_CREATED,
-    response_model=SuccessResponse[CompanyUserResponse],
+    response_model=SuccessResponse[CompanyUserRegisterResponse],
     responses={
         201: {"description": "회원가입 성공"},
         409: {"description": "중복 이메일 또는 중복된 사업자등록번호"},

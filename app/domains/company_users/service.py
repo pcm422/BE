@@ -8,7 +8,7 @@ from app.domains.company_users.schemas import (
     CompanyUserUpdateRequest,
     CompanyUserUpdateResponse,
     FindCompanyUserEmail,
-    ResetCompanyUserPassword,
+    ResetCompanyUserPassword, CompanyUserRegisterRequest, CompanyUserInfo, JobPostingsSummary,
 )
 from app.domains.company_users.utiles import (
     check_password_match,
@@ -75,7 +75,7 @@ async def create_company_user(
 
 
 # 기업 회원 가입
-async def register_company_user(db: AsyncSession, payload: CompanyUserBase):
+async def register_company_user(db: AsyncSession, payload: CompanyUserRegisterRequest):
     # 비밀번호 일치 확인
     check_password_match(payload.password, payload.confirm_password)
     # 중복 확인
@@ -86,7 +86,7 @@ async def register_company_user(db: AsyncSession, payload: CompanyUserBase):
     try:
         # 기업 정보 저장
         company_info = await create_company_info(db, payload)
-        # 기업 유저(담당자) 정보 저장
+        # 기업 유저 정보 저장
         company_user = await create_company_user(db, payload, company_info.id)
 
         return company_user
@@ -131,14 +131,33 @@ async def get_company_user_mypage(db: AsyncSession, current_user: CompanyUser):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="기업 회원 정보를 찾을 수 없습니다.",
         )
-    return result
-
+    company = user.company
+    data = {
+        "company_user_id":      user.id,
+        "email":                user.email,
+        "company_name":         company.company_name,
+        "company_id":           company.id,
+        "manager_name":         company.manager_name,
+        "manager_email":        company.manager_email,
+        "manager_phone":        company.manager_phone,
+        "company_intro":        company.company_intro,
+        "business_reg_number":  company.business_reg_number,
+        "opening_date":         company.opening_date,
+        "ceo_name":             company.ceo_name,
+        "address":              company.address,
+        "company_image":        company.company_image,
+        "job_postings": [
+            JobPostingsSummary.from_orm(jp).dict()
+            for jp in user.job_postings
+        ],
+    }
+    return data
 
 # 기업 회원 정보 수정
 async def update_company_user(
     db: AsyncSession,
     payload: CompanyUserUpdateRequest,
-    current_user: CompanyUser,
+    current_user: CompanyUser
 ):
     has_changes = False
 
@@ -149,6 +168,7 @@ async def update_company_user(
             current_user.password = hash_password(payload.password)
             has_changes = True
 
+    company = current_user.company
     # 수정할 유저 필드
     user_fields = {
         "manager_name": payload.manager_name,
@@ -160,18 +180,27 @@ async def update_company_user(
     }
 
     for field, new_value in user_fields.items():
-        if new_value is not None and getattr(current_user, field) != new_value:
-            setattr(current_user, field, new_value)
+        if new_value is not None and getattr(company, field) != new_value:
+            setattr(company, field, new_value)
             has_changes = True
 
     # 커밋 처리
     if has_changes:
         await db.commit()
-        await db.refresh(current_user)
+        await db.refresh(company)
 
-    result = CompanyUserUpdateResponse
+    result = {
+        "company_user_id": current_user.id,
+        "email": current_user.email,
+        "company_name": company.company_name,
+        "manager_name": company.manager_name,
+        "manager_email": company.manager_email,
+        "manager_phone": company.manager_phone,
+        "company_intro": company.company_intro,
+        "address": company.address,
+        "company_image": company.company_image,
+    }
     return result
-
 
 # 기업 회원 탈퇴
 async def delete_company_user(db: AsyncSession, current_user: CompanyUser):
