@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import List, Optional
 
 from fastapi import HTTPException, status
@@ -80,8 +79,6 @@ async def create_application(
             job_posting_id=job_posting_id,
             resumes_data=snapshot,
             status=ApplicationStatusEnum.applied,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
 
         try:
@@ -232,7 +229,6 @@ async def update_application_status(
     try:  # 예외 처리 시작
         app = await get_company_application_detail(company_user, application_id, session)  # 지원 내역 가져오기
         app.status = status_val  # 상태 변경
-        app.updated_at = datetime.now()  # 업데이트 날짜 설정
         await session.commit()  # 세션 커밋
         await session.refresh(app)  # 새로 고침
         return app  # 결과 반환

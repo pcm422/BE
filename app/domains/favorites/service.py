@@ -1,5 +1,3 @@
-from datetime import datetime  # 날짜/시간 처리를 위해 datetime 임포트
-
 from fastapi import HTTPException, status  # HTTP 예외 처리 및 상태 코드 임포트
 from sqlalchemy.ext.asyncio import AsyncSession  # 비동기 DB 세션 사용
 from sqlalchemy.future import select  # 비동기 쿼리 작성을 위해 select 임포트
@@ -31,11 +29,10 @@ async def create_favorite(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="채용공고를 찾을 수 없습니다."
         )
-    # 3. 즐겨찾기 레코드 생성: 생성 시각을 현재 시간으로 지정합니다.
+    # 3. 즐겨찾기 레코드 생성
     new_fav = Favorite(
         user_id=current_user.id,
         job_posting_id=job_posting_id,
-        created_at=datetime.now(),
     )
     db.add(new_fav)  # 새 레코드를 세션에 추가
     await db.commit()  # 변경사항 커밋
