@@ -1,4 +1,3 @@
-from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -75,8 +74,6 @@ async def create_new_resume(resume_data: ResumeCreate, db: AsyncSession) -> Resu
         resume_image=resume_data.resume_image,      # 이력서 이미지
         desired_area=resume_data.desired_area,      # 희망 지역
         introduction=resume_data.introduction,      # 자기소개
-        created_at=datetime.now(),                  # 생성일
-        updated_at=datetime.now()                   # 수정일
     )
 
     # 만약 educations 필드가 있다면 반복을 통해 학력 추가
@@ -89,8 +86,6 @@ async def create_new_resume(resume_data: ResumeCreate, db: AsyncSession) -> Resu
                 education_status=edu_data.education_status,  # 학력 상태
                 start_date=edu_data.start_date,              # 입학일
                 end_date=edu_data.end_date,                  # 졸업(예정)일
-                created_at=datetime.now(),                   # 생성일
-                updated_at=datetime.now()                    # 수정일
             )
             new_resume.educations.append(new_education)  # 학력사항 리스트에 추가
 
@@ -104,8 +99,6 @@ async def create_new_resume(resume_data: ResumeCreate, db: AsyncSession) -> Resu
                 start_date=exp_data.start_date,              # 근무 시작일
                 end_date=exp_data.end_date,                  # 근무 종료일
                 description=exp_data.description,            # 업무 내용 등 상세 정보
-                created_at=datetime.now(),                   # 생성일
-                updated_at=datetime.now()                    # 수정일
             )
             new_resume.experiences.append(new_experience)  # 경력사항 리스트에 추가
 
@@ -148,8 +141,6 @@ async def update_existing_resume(resumes_id: int, user_id: int, resume_data: Res
         resume.desired_area = resume_data.desired_area  # 희망 지역 수정
     if resume_data.introduction is not None:
         resume.introduction = resume_data.introduction  # 자기소개 내용 수정
-    # 수정일을 현재 시간으로 갱신
-    resume.updated_at = datetime.now()
     ### 학력사항과 경력사항은 있으면 삭제 후 생성 없으면 그대로 진행
     # 학력사항 업데이트
     if resume_data.educations is not None:
@@ -170,8 +161,6 @@ async def update_existing_resume(resumes_id: int, user_id: int, resume_data: Res
                 education_status=edu_data.education_status,
                 start_date=edu_data.start_date,
                 end_date=edu_data.end_date,
-                created_at=datetime.now(),
-                updated_at=datetime.now()
             )
             db.add(new_education)
 
@@ -189,8 +178,6 @@ async def update_existing_resume(resumes_id: int, user_id: int, resume_data: Res
                 start_date=exp_data.start_date,
                 end_date=exp_data.end_date,
                 description=exp_data.description,
-                created_at=datetime.now(),
-                updated_at=datetime.now()
             )
             db.add(new_experience)
 

@@ -1,4 +1,3 @@
-from datetime import datetime
 from enum import Enum as PyEnum
 
 from sqlalchemy import Boolean, Column, DateTime
@@ -6,6 +5,8 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import relationship
 
+# 유틸리티 함수 임포트
+from app.core.datetime_utils import get_now_kst
 from app.models import Base
 
 
@@ -34,8 +35,15 @@ class User(Base):
     signup_purpose = Column(Text, nullable=True)  # 가입 목적
     referral_source = Column(Text, nullable=True)  # 유입경로
     is_active = Column(Boolean, nullable=False, default=False)  # 이메일 활성상태
-    created_at = Column(DateTime, default=datetime.now)  # 생성일
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)  # 수정일
+    created_at = Column(
+        DateTime(timezone=True), # timezone=True 추가
+        default=get_now_kst # 유틸리티 함수 사용
+    )
+    updated_at = Column(
+        DateTime(timezone=True), # timezone=True 추가
+        default=get_now_kst, # 유틸리티 함수 사용
+        onupdate=get_now_kst # 유틸리티 함수 사용
+    )
 
     # 관계
     resumes = relationship(

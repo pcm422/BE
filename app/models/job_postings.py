@@ -1,4 +1,3 @@
-from datetime import datetime
 from enum import Enum
 
 from sqlalchemy import Boolean, Column, Date, DateTime
@@ -6,6 +5,8 @@ from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
+# 유틸리티 함수 임포트
+from app.core.datetime_utils import get_now_kst
 from app.models.base import Base
 
 
@@ -93,8 +94,8 @@ class JobPosting(Base):
     description = Column(Text, nullable=False)
     postings_image = Column(String(255), nullable=False)
 
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime(timezone=True), default=get_now_kst)
+    updated_at = Column(DateTime(timezone=True), default=get_now_kst, onupdate=get_now_kst)
 
     # 관계 설정
     author = relationship("CompanyUser", back_populates="job_postings")

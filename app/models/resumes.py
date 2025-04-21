@@ -1,10 +1,11 @@
-from datetime import datetime, date
+from datetime import date
 
 from pydantic import field_validator
 from sqlalchemy import Column, Date, DateTime
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
+from app.core.datetime_utils import get_now_kst
 from app.models import Base
 
 
@@ -15,8 +16,8 @@ class Resume(Base):
     resume_image = Column(String(255), nullable=True)  # 이력서 사진
     desired_area = Column(String(255), nullable=True)  # 희망 지역
     introduction = Column(Text, nullable=True)  # 자기소개
-    created_at = Column(DateTime, default=datetime.now)  # 생성일
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)  # 수정일
+    created_at = Column(DateTime(timezone=True), default=get_now_kst)  # 생성일
+    updated_at = Column(DateTime(timezone=True), default=get_now_kst, onupdate=get_now_kst)  # 수정일
 
     # 관계
     user = relationship("User", back_populates="resumes", lazy="selectin")
@@ -52,4 +53,4 @@ class Resume(Base):
         return None
 
     def __str__(self):
-        return f"{self.company_name or '이전 회사 없음'} ({self.position or '직무 없음'})"
+        return f"{self.id} - {self.created_at}"
