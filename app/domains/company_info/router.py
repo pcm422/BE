@@ -7,7 +7,7 @@ from app.domains.company_info.service import get_company_info
 from app.domains.company_users.schemas import SuccessResponse
 from app.domains.company_users.utiles import success_response
 
-router = APIRouter(prefix="/companies", tags=["company_info"])
+router = APIRouter(prefix="/companies", tags=["기업 정보"])
 
 
 @router.get(

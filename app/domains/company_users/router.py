@@ -21,10 +21,10 @@ from app.domains.company_users.service import (delete_company_user,
                                                reset_company_user_password,
                                                update_company_user)
 from app.domains.company_users.utiles import success_response
-from app.domains.users.service import create_access_token, create_refresh_token
+from app.core.utils import create_access_token, create_refresh_token
 from app.models import CompanyUser
 
-router = APIRouter(prefix="/company", tags=["Company Users"])  # URL 앞 부분
+router = APIRouter(prefix="/company", tags=["기업 회원"])  # URL 앞 부분
 
 
 # 회원가입
