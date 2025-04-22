@@ -1,8 +1,9 @@
 import enum
 from datetime import date, datetime
-from typing import Any, Type, TypeVar, Optional, List
+from typing import Type, TypeVar, Optional
+import traceback
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator, Field
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator, Field, ValidationError
 from fastapi import Form, HTTPException, status
 
 from app.models.job_postings import (EducationEnum, JobCategoryEnum,
@@ -13,8 +14,8 @@ TEnum = TypeVar("TEnum", bound=enum.Enum)
 
 # --- Helper Functions ---
 
-def _validate_dates_logic(start_date: date | None, end_date: date | None, is_always_recruiting: bool | None) -> None:
-    """공통 날짜 유효성 검사 로직"""
+def _validate_recruitment_dates(start_date: date | None, end_date: date | None, is_always_recruiting: bool | None) -> None:
+    """공통 채용 기간 날짜 유효성 검사 로직"""
     # 상시 모집이 아닐 경우에만 날짜 검증
     if not is_always_recruiting:
         today = date.today()
@@ -142,7 +143,7 @@ class JobPostingCreate(JobPostingBase):
         """모델 레벨 유효성 검사 (주로 필드 간의 관계 검증)"""
         try:
             # 공통 날짜 검증 로직 호출
-            _validate_dates_logic(
+            _validate_recruitment_dates(
                 self.recruit_period_start,
                 self.recruit_period_end,
                 self.is_always_recruiting
@@ -182,7 +183,7 @@ class JobPostingUpdate(JobPostingBase):
         """수정 시 모델 레벨 유효성 검사 (Optional 필드 고려)"""
         # 필드가 None일 수 있으므로, 값이 있는 필드 간의 관계만 검증
         try:
-            _validate_dates_logic(
+            _validate_recruitment_dates(
                 self.recruit_period_start,
                 self.recruit_period_end,
                 self.is_always_recruiting
@@ -264,119 +265,115 @@ class JobPostingCreateFormData:
 
     def parse_to_job_posting_create(self, postings_image_url: str | None) -> 'JobPostingCreate':
         """
-        Form 데이터 필드를 검증하고 JobPostingCreate Pydantic 모델로 변환한다.
-        각 필드 타입에 맞는 파싱 함수(_parse_date, _parse_int, _parse_enum, _parse_float)를 사용한다.
-        파싱 중 에러 발생 시 HTTPException으로 변환하여 FastAPI에 전달한다.
+        Form 데이터 필드를 파싱하고 JobPostingCreate Pydantic 모델로 변환 및 검증한다.
+        파싱 오류 발생 시 우선적으로 HTTPException(422)을 발생시킨다.
+        파싱 성공 후 Pydantic 모델 생성/검증 중 오류 발생 시 ValidationError를 잡아 HTTPException(422)으로 변환한다.
         """
         parsed_data = {}
-        errors = {}
+        parsing_errors = {} # 개별 필드 파싱 오류 수집
 
-        # 필수 필드 검증 및 파싱
+        # --- 각 필드 파싱 시도 및 오류 수집 ---
+        # Title (Required String)
         if not self.title:
-            errors["title"] = "제목은 필수입니다."
+            parsing_errors["title"] = "제목은 필수입니다."
         else:
             parsed_data["title"] = self.title
 
-        # 날짜 파싱 (선택적)
+        # Dates (Optional Date)
         try:
             parsed_data["recruit_period_start"] = _parse_date(self.recruit_period_start, "모집 시작일")
         except ValueError as e:
-            errors["recruit_period_start"] = str(e)
-
+            parsing_errors["recruit_period_start"] = str(e)
         try:
             parsed_data["recruit_period_end"] = _parse_date(self.recruit_period_end, "모집 종료일")
         except ValueError as e:
-            errors["recruit_period_end"] = str(e)
+            parsing_errors["recruit_period_end"] = str(e)
 
-        # 상시 모집 여부는 bool로 처리 (FastAPI가 처리)
+        # Boolean (Handled by FastAPI/Pydantic)
         parsed_data["is_always_recruiting"] = self.is_always_recruiting
 
-        # Enum 파싱 (선택적)
-        try:
-            parsed_data["education"] = _parse_enum(EducationEnum, self.education, "학력")
-            if parsed_data["education"] is None: errors["education"] = "학력은 필수입니다." # 필수 Enum 처리
-        except ValueError as e:
-            errors["education"] = str(e)
+        # Required Enums
+        required_enums = {
+            "education": (EducationEnum, "학력"),
+            "payment_method": (PaymentMethodEnum, "급여 지급 방식"),
+            "job_category": (JobCategoryEnum, "직종 카테고리"),
+            "work_duration": (WorkDurationEnum, "근무 기간"),
+        }
+        for field, (enum_cls, name) in required_enums.items():
+            try:
+                enum_val = _parse_enum(enum_cls, getattr(self, field), name)
+                parsed_data[field] = enum_val
+            except ValueError as e:
+                parsing_errors[field] = str(e)
 
-        # 숫자 파싱 (선택적)
+        # Required Integers (with validation)
         try:
-            parsed_data["recruit_number"] = _parse_int(self.recruit_number, "모집 인원")
-            if parsed_data["recruit_number"] is None: errors["recruit_number"] = "모집 인원은 필수입니다." # 필수 int 처리
-            elif parsed_data["recruit_number"] < 0: errors["recruit_number"] = "모집 인원은 0 이상이어야 합니다."
+            recruit_num_val = _parse_int(self.recruit_number, "모집 인원", min_value=0)
+            if recruit_num_val is None:
+                parsing_errors["recruit_number"] = "모집 인원은 필수입니다."
+            parsed_data["recruit_number"] = recruit_num_val
         except ValueError as e:
-            errors["recruit_number"] = str(e)
-
-        # 나머지 필드들은 문자열이므로 그대로 할당 (선택적)
-        parsed_data["benefits"] = self.benefits
-        parsed_data["preferred_conditions"] = self.preferred_conditions
-        parsed_data["other_conditions"] = self.other_conditions
-        parsed_data["work_address"] = self.work_address
-        if not parsed_data["work_address"]: errors["work_address"] = "근무지 주소는 필수입니다."
-        parsed_data["work_place_name"] = self.work_place_name
-        if not parsed_data["work_place_name"]: errors["work_place_name"] = "근무지명은 필수입니다."
-
-        try:
-            parsed_data["payment_method"] = _parse_enum(PaymentMethodEnum, self.payment_method, "급여 지급 방식")
-            if parsed_data["payment_method"] is None: errors["payment_method"] = "급여 지급 방식은 필수입니다."
-        except ValueError as e:
-            errors["payment_method"] = str(e)
+            parsing_errors["recruit_number"] = str(e)
 
         try:
-            parsed_data["job_category"] = _parse_enum(JobCategoryEnum, self.job_category, "직종 카테고리")
-            if parsed_data["job_category"] is None: errors["job_category"] = "직종 카테고리는 필수입니다."
+            salary_val = _parse_int(self.salary, "급여", min_value=0)
+            if salary_val is None:
+                parsing_errors["salary"] = "급여는 필수입니다."
+            parsed_data["salary"] = salary_val
         except ValueError as e:
-            errors["job_category"] = str(e)
+            parsing_errors["salary"] = str(e)
 
-        try:
-            parsed_data["work_duration"] = _parse_enum(WorkDurationEnum, self.work_duration, "근무 기간")
-            if parsed_data["work_duration"] is None: errors["work_duration"] = "근무 기간은 필수입니다."
-        except ValueError as e:
-            errors["work_duration"] = str(e)
+        # Required Strings
+        required_strings = {
+            "work_address": "근무지 주소", "work_place_name": "근무지명",
+            "career": "경력 요구사항", "employment_type": "고용 형태",
+            "work_days": "근무 요일/스케줄", "description": "상세 설명"
+        }
+        for field, name in required_strings.items():
+            value = getattr(self, field)
+            if not value:
+                parsing_errors[field] = f"{name}은(는) 필수입니다."
+            else:
+                parsed_data[field] = value
 
-
-        parsed_data["career"] = self.career
-        if not parsed_data["career"]: errors["career"] = "경력 요구사항은 필수입니다."
-        parsed_data["employment_type"] = self.employment_type
-        if not parsed_data["employment_type"]: errors["employment_type"] = "고용 형태는 필수입니다."
-
-        try:
-            parsed_data["salary"] = _parse_int(self.salary, "급여", min_value=0)
-            if parsed_data["salary"] is None: errors["salary"] = "급여는 필수입니다."
-        except ValueError as e:
-            errors["salary"] = str(e)
-
-
-        parsed_data["work_days"] = self.work_days
-        if not parsed_data["work_days"]: errors["work_days"] = "근무 요일/스케줄은 필수입니다."
-        parsed_data["description"] = self.description
-        if not parsed_data["description"]: errors["description"] = "상세 설명은 필수입니다."
-
-        # 이미지 URL 추가
-        parsed_data["postings_image"] = postings_image_url
-
-        # 위도, 경도 파싱 (선택적)
+        # Optional Floats
         try:
             parsed_data["latitude"] = _parse_float(self.latitude, "위도")
         except ValueError as e:
-            errors["latitude"] = str(e)
-
+            parsing_errors["latitude"] = str(e)
         try:
             parsed_data["longitude"] = _parse_float(self.longitude, "경도")
         except ValueError as e:
-            errors["longitude"] = str(e)
+            parsing_errors["longitude"] = str(e)
 
-        # 에러가 하나라도 있으면 HTTPException 발생
-        if errors:
-            # 에러 메시지를 detail에 포함하여 전달
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=errors)
+        # Optional Strings (이미 __init__에서 할당됨, parsed_data에 추가만)
+        parsed_data["benefits"] = self.benefits
+        parsed_data["preferred_conditions"] = self.preferred_conditions
+        parsed_data["other_conditions"] = self.other_conditions
 
+        # Image URL
+        parsed_data["postings_image"] = postings_image_url
+
+        # --- 파싱 오류 우선 처리 ---
+        if parsing_errors:
+            # Pydantic 오류 형식과 유사하게 detail 구성
+            error_details = [{"loc": [field], "msg": msg, "type": "value_error"} for field, msg in parsing_errors.items()]
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=error_details)
+
+        # --- 파싱 오류 없을 시 Pydantic 모델 생성 및 검증 시도 ---
         try:
-            # 모든 파싱이 성공하면 Pydantic 모델 생성 시도
+            # parsed_data 딕셔너리를 사용하여 JobPostingCreate 인스턴스 생성
             # 이 과정에서 Pydantic의 모델 레벨 유효성 검사(@model_validator)가 추가로 실행됨
-            return JobPostingCreate(**parsed_data)
-        except ValueError as e:
-             # Pydantic 유효성 검사 에러 처리
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+            job_posting_instance = JobPostingCreate(**parsed_data)
+            return job_posting_instance
+        except ValidationError as e:
+            # Pydantic 유효성 검사 실패 시 (예: @model_validator의 날짜 로직)
+            # Pydantic의 e.errors()는 FastAPI가 이해하는 형식이므로 그대로 전달
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.errors())
+        except Exception as e:
+            # 그 외 예상치 못한 오류 (Pydantic 생성 중 발생 가능)
+            traceback.print_exc() # 서버 로그에 상세 오류 출력
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"데이터 검증 중 예상치 못한 오류 발생: {e}")
 
 
 class JobPostingHelpers(BaseModel):

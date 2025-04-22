@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Optional
 from enum import Enum
 
 from fastapi import APIRouter, Depends, Query, status, UploadFile, File
@@ -201,15 +201,7 @@ async def get_posting(
     current_user: Optional[User] = Depends(get_current_user_optional)
 ) -> JobPosting:
     user_id = current_user.id if current_user else None
-    # --- 디버깅 로그 추가 ---
-    print(f"[ROUTER get_posting] Current User: {current_user}")
-    print(f"[ROUTER get_posting] Extracted User ID: {user_id}")
-    # -----------------------
     posting = await get_posting_or_404(session, job_posting_id, user_id=user_id)
-    # --- 디버깅 로그 추가 ---
-    is_favorited_value = getattr(posting, 'is_favorited', 'Attribute not found')
-    print(f"[ROUTER get_posting] Posting object received from service. is_favorited = {is_favorited_value}")
-    # -----------------------
     return posting
 
 
