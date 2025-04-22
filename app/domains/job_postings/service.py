@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, desc, exists, select, and_
+from sqlalchemy import func, desc, and_
 from fastapi import UploadFile, HTTPException, status
 
 from app.domains.job_postings.schemas import JobPostingUpdate, JobPostingCreate
@@ -10,6 +10,49 @@ from app.models.job_applications import JobApplication
 from app.models.favorites import Favorite
 from app.core.utils import upload_image_to_ncp
 
+
+# --- Helper Functions (Internal Service Logic) ---
+
+async def _attach_favorite_status(
+    session: AsyncSession,
+    postings: Union[JobPosting, list[JobPosting]],
+    user_id: Optional[int]
+) -> None:
+    """주어진 채용 공고(들)에 현재 사용자의 즐겨찾기 상태를 설정합니다."""
+    if not postings:
+        return
+
+    # 단일 객체인 경우 리스트로 변환하여 일관되게 처리
+    is_single = False
+    if isinstance(postings, JobPosting):
+        is_single = True
+        posting_list = [postings]
+    else:
+        posting_list = postings
+
+    # 사용자 ID가 없거나 공고 목록이 비어있으면 is_favorited를 None으로 설정
+    if user_id is None or not posting_list:
+        for p in posting_list:
+            setattr(p, 'is_favorited', None) # setattr 사용
+        return
+
+    # 즐겨찾기 정보 조회
+    posting_ids = [p.id for p in posting_list]
+    favorite_query = select(Favorite.job_posting_id).where(
+        and_(
+            Favorite.user_id == user_id,
+            Favorite.job_posting_id.in_(posting_ids)
+        )
+    )
+    favorite_result = await session.execute(favorite_query)
+    favorited_posting_ids = {row[0] for row in favorite_result}
+
+    # 각 공고 객체에 is_favorited 속성 설정
+    for p in posting_list:
+        setattr(p, 'is_favorited', p.id in favorited_posting_ids)
+
+
+# --- Service Functions ---
 
 async def create_job_posting(
     session: AsyncSession,
@@ -24,10 +67,12 @@ async def create_job_posting(
         try:
             image_url = await upload_image_to_ncp(image_file, folder="job_postings")
         except Exception as e:
-            print(f"Warning: 이미지 업로드 실패 - {e}. 이미지 없이 공고를 생성합니다.")
-            # 필요에 따라 HTTPException을 발생시킬 수 있습니다.
-            # raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="이미지 업로드 중 오류 발생")
-            # 여기서는 일단 이미지 없이 진행하도록 None 유지
+            # 이미지 업로드 실패 시 경고 대신 HTTPException 발생
+            print(f"Error: 이미지 업로드 실패 - {e}") # 서버 로그에는 상세 오류 기록
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"이미지 업로드 중 오류가 발생했습니다: {e}"
+            )
 
     # JobPostingCreate 모델에서 ORM 모델에 필요한 데이터 추출
     orm_data = job_posting_data.model_dump(exclude={"postings_image"})
@@ -49,7 +94,6 @@ async def create_job_posting(
         return job_posting
     except Exception as e:
         await session.rollback()
-        print(f"Error: 채용 공고 생성 중 데이터베이스 오류 발생 - {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="채용 공고 생성 중 오류가 발생했습니다."
@@ -80,26 +124,8 @@ async def list_job_postings(
     result = await session.execute(list_query)
     postings = list(result.scalars().all()) # 결과를 리스트로 변환
 
-    # 로그인 사용자이고 공고 목록이 있으면 즐겨찾기 정보 조회
-    if user_id and postings:
-        posting_ids = [p.id for p in postings]
-        # 현재 페이지 공고 ID들에 대해 사용자가 즐겨찾기한 ID 목록 조회
-        favorite_query = select(Favorite.job_posting_id).where(
-            and_( # 명시적으로 AND 조건 사용
-                Favorite.user_id == user_id,
-                Favorite.job_posting_id.in_(posting_ids)
-            )
-        )
-        favorite_result = await session.execute(favorite_query)
-        favorited_posting_ids = {row[0] for row in favorite_result} # Set으로 변환하여 빠르게 확인
-
-        # 각 공고 객체에 is_favorited 속성 설정
-        for posting in postings:
-            posting.is_favorited = posting.id in favorited_posting_ids
-    else:
-        # 비로그인 사용자이거나 공고가 없으면 모든 공고의 is_favorited를 None으로 설정
-        for posting in postings:
-            posting.is_favorited = None
+    # 즐겨찾기 상태 첨부 (헬퍼 함수 사용)
+    await _attach_favorite_status(session, postings, user_id)
 
     return postings, total_count # 수정된 공고 리스트 반환
 
@@ -115,23 +141,8 @@ async def get_job_posting(
     if not job_posting:
         return None # 공고 없으면 None 반환
 
-    # 즐겨찾기 여부 확인 및 설정
-    if user_id:
-        # 로그인한 경우, 즐겨찾기 여부 확인 쿼리
-        favorite_exists_query = select(
-            exists().where(
-                and_( # 명시적으로 AND 조건 사용
-                    Favorite.user_id == user_id,
-                    Favorite.job_posting_id == job_posting_id
-                )
-            )
-        )
-        is_favorited = await session.scalar(favorite_exists_query)
-        # scalar 결과가 True/False/None 일 수 있으므로 명확히 처리
-        job_posting.is_favorited = bool(is_favorited) # bool()은 None을 False로 변환
-    else:
-        # 비로그인 시 또는 user_id 없을 시 None으로 설정
-        job_posting.is_favorited = None
+    # 즐겨찾기 상태 첨부 (헬퍼 함수 사용)
+    await _attach_favorite_status(session, job_posting, user_id)
 
     return job_posting
 
@@ -167,7 +178,6 @@ async def update_job_posting(
         return job_posting
     except Exception as e:
         await session.rollback()
-        print(f"Error: 채용 공고 업데이트 중 데이터베이스 오류 발생 - {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="채용 공고 업데이트 중 오류가 발생했습니다."
@@ -189,9 +199,6 @@ async def delete_job_posting(
         return True # 삭제 성공
     except Exception as e:
         await session.rollback()
-        print(f"Error: 채용 공고 삭제 중 데이터베이스 오류 발생 - {e}")
-        # 필요하다면 여기서 HTTPException 발생 또는 False 반환
-        # raise HTTPException(...)
         return False # 삭제 실패
 
 
@@ -261,25 +268,8 @@ async def search_job_postings(
     result = await session.execute(search_query)
     postings = list(result.scalars().all()) # 결과를 리스트로 변환
 
-    # 로그인 사용자이고 공고 목록이 있으면 즐겨찾기 정보 조회
-    if user_id and postings:
-        posting_ids = [p.id for p in postings]
-        favorite_query = select(Favorite.job_posting_id).where(
-            and_(
-                Favorite.user_id == user_id,
-                Favorite.job_posting_id.in_(posting_ids)
-            )
-        )
-        favorite_result = await session.execute(favorite_query)
-        favorited_posting_ids = {row[0] for row in favorite_result}
-
-        # 각 공고 객체에 is_favorited 속성 설정
-        for posting in postings:
-            posting.is_favorited = posting.id in favorited_posting_ids
-    else:
-        # 비로그인 사용자이거나 공고가 없으면 모든 공고의 is_favorited를 None으로 설정
-        for posting in postings:
-            posting.is_favorited = None
+    # 즐겨찾기 상태 첨부 (헬퍼 함수 사용)
+    await _attach_favorite_status(session, postings, user_id)
 
     return postings, total_count
 
@@ -315,23 +305,8 @@ async def get_popular_job_postings(
     result = await session.execute(list_query)
     postings = list(result.scalars().all()) # 결과를 리스트로 변환
 
-    # 로그인 사용자이고 공고 목록이 있으면 즐겨찾기 정보 조회 (list_job_postings와 동일 로직)
-    if user_id and postings:
-        posting_ids = [p.id for p in postings]
-        favorite_query = select(Favorite.job_posting_id).where(
-            and_(
-                Favorite.user_id == user_id,
-                Favorite.job_posting_id.in_(posting_ids)
-            )
-        )
-        favorite_result = await session.execute(favorite_query)
-        favorited_posting_ids = {row[0] for row in favorite_result}
-
-        for posting in postings:
-            posting.is_favorited = posting.id in favorited_posting_ids
-    else:
-        for posting in postings:
-            posting.is_favorited = None
+    # 즐겨찾기 상태 첨부 (헬퍼 함수 사용)
+    await _attach_favorite_status(session, postings, user_id)
 
     # total_count는 조회된 인기 공고 수 반환
     total_count = len(postings)
