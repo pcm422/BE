@@ -17,40 +17,6 @@ NCP_BUCKET_NAME = os.getenv("NCP_BUCKET_NAME")
 NCP_ENDPOINT = os.getenv("NCP_ENDPOINT", "https://kr.object.ncloudstorage.com")
 NCP_REGION = os.getenv("NCP_REGION", "kr-standard")
 
-# 인증된 사용자 반환 (JWT 토큰 기반)
-async def read_current_user(
-    Authorization: str = Header(...), db=Depends(get_db_session)
-) -> User:
-    """
-    현재 인증된 사용자의 정보를 반환.
-    Authorization 헤더에 포함된 JWT 토큰을 검증하여 사용자 정보를 조회.
-    """
-    # 헤더에서 Bearer 토큰 추출
-    if Authorization.startswith("Bearer "):  # "Bearer " 접두사를 포함한 토큰인지 확인
-        token = Authorization.split(" ")[1]  # "Bearer " 이후의 실제 토큰 값을 추출
-    else:
-        raise HTTPException(status_code=401, detail="토큰이 제공되지 않았습니다.")
-    try:
-        # JWT 토큰 디코딩
-        payload = jwt.decode(
-            token, SECRET_KEY, algorithms=[ALGORITHM]
-        )  # JWT 토큰을 디코딩하여 payload 추출
-        user_id: str = payload.get("sub")  # sub 클레임에서 사용자 ID 추출
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="잘못된 토큰입니다.")
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="토큰 검증 실패.")
-
-    from sqlalchemy.future import select
-
-    result = await db.execute(
-        select(User).filter(User.id == int(user_id))
-    )  # 사용자 ID로 DB에서 사용자 조회
-    user = result.scalar_one_or_none()  # 조회된 사용자 객체 반환 또는 예외 발생
-    if user is None:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    return user  # 조회된 사용자 객체 반환
-
 # 인증된 회사 사용자 반환 (JWT 토큰 기반)
 async def get_current_company_user(
     Authorization: str = Header(...), db: AsyncSession = Depends(get_db_session)

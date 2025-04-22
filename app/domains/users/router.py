@@ -1,14 +1,25 @@
 import jwt
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
 from app.models import User
 
 from .schemas import (PasswordReset, TokenRefreshRequest, UserLogin,
                       UserProfileUpdate, UserRegister)
-from .service import (ALGORITHM, SECRET_KEY, delete_user, get_user_details,
-                      login_user, recommend_jobs, refresh_access_token,
-                      register_user, reset_password, update_user)
+from .service import (
+    ALGORITHM,
+    SECRET_KEY,
+    delete_user,
+    get_user_details,
+    login_user,
+    recommend_jobs,
+    refresh_access_token,
+    register_user,
+    reset_password,
+    update_user,
+    check_email,
+)
 
 router = APIRouter()
 
@@ -47,6 +58,19 @@ async def read_current_user(
     if user is None:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
     return user  # 조회된 사용자 객체 반환
+
+
+@router.get("/check-email", tags=["사용자"])
+async def check_email_def(
+    email: str = Query(..., description="중복 확인할 이메일"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    이메일 중복 여부를 확인하는 엔드포인트입니다.
+    이미 등록된 이메일인지 확인 후 결과를 반환합니다.
+    """
+    is_duplicate = await check_email(db, email)
+    return is_duplicate
 
 
 # 회원가입

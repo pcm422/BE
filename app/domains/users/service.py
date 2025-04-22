@@ -15,14 +15,21 @@ from ...core.utils import hash_password, create_access_token, create_refresh_tok
 
 load_dotenv()
 
+async def check_email(db: AsyncSession, email: str) -> dict:
+    """이메일 중복 여부를 확인"""
+    result = await db.execute(select(User).filter(User.email == email))
+    is_duplicate = result.scalar_one_or_none() is not None  # 중복 여부 판단
+
+    return {
+        "status": "success",
+        "message": "이미 가입된 이메일입니다." if is_duplicate else "회원가입이 가능한 이메일입니다.",
+        "is_duplicate": is_duplicate
+    }
+
 # 사용자 등록 기능
 async def register_user(db: AsyncSession, user_data: UserRegister) -> dict:
-    # DB에서 중복 이메일 확인을 위한 쿼리를 실행
-    result = await db.execute(
-        select(User).filter(User.email == user_data.email)
-    )  # 이메일로 사용자 검색
-    existing_user = result.scalar_one_or_none()  # 결과에서 하나 또는 None 반환
-    if existing_user:
+    # DB에서 중복 이메일 확인
+    if await check_email(db, user_data.email):
         # 중복 이메일 존재 시 예외 발생
         raise HTTPException(status_code=409, detail="이미 존재하는 이메일입니다.")
     # 새로운 User 인스턴스 생성 (비밀번호는 해시 처리)
