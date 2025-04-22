@@ -49,10 +49,12 @@ class JobCategoryEnum(str, Enum):
 
 class WorkDurationEnum(str, Enum):
     more_3_months = "3개월 이상"
+    between_3_6_months = "3개월 ~ 6개월"
     more_6_months = "6개월 이상"
+    between_6_12_months = "6개월 ~ 1년"
     more_1_year = "1년 이상"
+    between_1_3_years = "1년 ~ 3년"
     more_3_years = "3년 이상"
-    negotiable = "협의 가능"
 
 
 class JobPosting(Base):
@@ -86,12 +88,20 @@ class JobPosting(Base):
         SQLAlchemyEnum(JobCategoryEnum, name="job_category_enum"), nullable=False
     )
     work_duration = Column(SQLAlchemyEnum(WorkDurationEnum, name="work_duration_enum"))
+    is_work_duration_negotiable = Column(Boolean, default=False)
     career = Column(String(50), nullable=False)
     employment_type = Column(String(50), nullable=False)
     salary = Column(Integer, nullable=False)
 
-    work_days = Column(String(255), nullable=False)
-    description = Column(Text, nullable=False)
+    work_days = Column(String(255), nullable=True)
+    is_work_days_negotiable = Column(Boolean, default=False)
+    is_schedule_based = Column(Boolean, default=False)
+
+    work_start_time = Column(String(5), nullable=True)
+    work_end_time = Column(String(5), nullable=True)
+    is_work_time_negotiable = Column(Boolean, default=False)
+
+    description = Column(Text, nullable=True)
     postings_image = Column(String(255), nullable=False)
 
     latitude = Column(Float, nullable=True)
