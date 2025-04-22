@@ -4,10 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.domains.company_users.schemas import (CompanyUserBase,
-                                               CompanyUserInfo,
                                                CompanyUserRegisterRequest,
                                                CompanyUserUpdateRequest,
-                                               CompanyUserUpdateResponse,
                                                FindCompanyUserEmail,
                                                JobPostingsSummary,
                                                ResetCompanyUserPassword)
@@ -32,8 +30,8 @@ async def check_dupl_business_number(db: AsyncSession, business_reg_number: str)
 # 이메일 중복 확인
 async def check_dupl_email(db: AsyncSession, email: str):
     result = await db.execute(select(CompanyUser).filter_by(email=email))
-    company_user_email = result.scalars().first()
-    if company_user_email:
+    email = result.scalars().first()
+    if email:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="이미 가입된 이메일입니다.",
