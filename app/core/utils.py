@@ -1,15 +1,11 @@
-import bcrypt
-import jwt
+import bcrypt, jwt, boto3, uuid, os
 from fastapi import Depends, Header, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-import boto3
-import uuid
-import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
-from app.core.config import ALGORITHM, SECRET_KEY
+from app.core.config import ALGORITHM, SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_MINUTES
 from app.core.db import get_db_session
 from app.models.company_users import CompanyUser
 from app.models.users import User
@@ -167,3 +163,33 @@ async def upload_image_to_ncp(file: UploadFile, folder: str = "job_postings"):
     url = f"{NCP_ENDPOINT}/{NCP_BUCKET_NAME}/{unique_filename}"
     
     return url
+
+# JWT 토큰 생성 함수들
+async def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
+    # 액세스 토큰을 생성하는 비동기 함수
+    to_encode = data.copy()  # 인코딩할 데이터를 복사
+    if expires_delta:
+        expire = (
+            datetime.now() + expires_delta
+        )  # 주어진 만료기간을 이용하여 만료 시각 계산
+    else:
+        expire = datetime.now() + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )  # 기본 만료 시간 설정
+    to_encode.update({"exp": expire})  # 만료 정보 추가
+    encoded_jwt = jwt.encode(
+        to_encode, SECRET_KEY, algorithm=ALGORITHM
+    )  # JWT 토큰 생성
+    return encoded_jwt  # 생성된 토큰 반환
+
+
+async def create_refresh_token(data: dict) -> str:
+    # 리프레쉬 토큰을 생성하는 비동기 함수
+    expire = datetime.now() + timedelta(
+        minutes=REFRESH_TOKEN_EXPIRE_MINUTES
+    )  # 리프레쉬 토큰 만료시간 계산
+    data.update({"exp": expire})  # 만료 정보 추가
+    encoded_jwt = jwt.encode(
+        data, SECRET_KEY, algorithm=ALGORITHM
+    )  # 리프레쉬 토큰 생성
+    return encoded_jwt  # 생성된 토큰 반환

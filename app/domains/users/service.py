@@ -1,9 +1,6 @@
-from datetime import datetime, timedelta
-
 import jwt
 from dotenv import load_dotenv
 from fastapi import HTTPException
-import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -12,68 +9,34 @@ from app.models import Interest, User, UserInterest
 
 from .schemas import (PasswordReset, TokenRefreshRequest, UserLogin,
                       UserProfileUpdate, UserRegister)
-from ...core.config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES
+from ..company_users.utiles import verify_password
+from ...core.config import SECRET_KEY, ALGORITHM
+from ...core.utils import hash_password, create_access_token, create_refresh_token
 
 load_dotenv()
 
+async def check_email(db: AsyncSession, email: str) -> dict:
+    """이메일 중복 여부를 확인"""
+    result = await db.execute(select(User).filter(User.email == email))
+    is_duplicate = result.scalar_one_or_none() is not None  # 중복 여부 판단
 
-def get_password_hash(password: str) -> str:
-    # bcrypt 라이브러리를 직접 사용하여 해시
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-    return hashed.decode("utf-8")
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # bcrypt.hashpw로 검증
-    return bcrypt.hashpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8")).decode("utf-8") == hashed_password
-
-
-# JWT 토큰 생성 함수들
-async def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
-    # 액세스 토큰을 생성하는 비동기 함수
-    to_encode = data.copy()  # 인코딩할 데이터를 복사
-    if expires_delta:
-        expire = (
-            datetime.now() + expires_delta
-        )  # 주어진 만료기간을 이용하여 만료 시각 계산
-    else:
-        expire = datetime.now() + timedelta(
-            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-        )  # 기본 만료 시간 설정
-    to_encode.update({"exp": expire})  # 만료 정보 추가
-    encoded_jwt = jwt.encode(
-        to_encode, SECRET_KEY, algorithm=ALGORITHM
-    )  # JWT 토큰 생성
-    return encoded_jwt  # 생성된 토큰 반환
-
-
-async def create_refresh_token(data: dict) -> str:
-    # 리프레쉬 토큰을 생성하는 비동기 함수
-    expire = datetime.now() + timedelta(
-        minutes=REFRESH_TOKEN_EXPIRE_MINUTES
-    )  # 리프레쉬 토큰 만료시간 계산
-    data.update({"exp": expire})  # 만료 정보 추가
-    encoded_jwt = jwt.encode(
-        data, SECRET_KEY, algorithm=ALGORITHM
-    )  # 리프레쉬 토큰 생성
-    return encoded_jwt  # 생성된 토큰 반환
-
+    return {
+        "status": "success",
+        "message": "이미 가입된 이메일입니다." if is_duplicate else "회원가입이 가능한 이메일입니다.",
+        "is_duplicate": is_duplicate
+    }
 
 # 사용자 등록 기능
 async def register_user(db: AsyncSession, user_data: UserRegister) -> dict:
-    # DB에서 중복 이메일 확인을 위한 쿼리를 실행
-    result = await db.execute(
-        select(User).filter(User.email == user_data.email)
-    )  # 이메일로 사용자 검색
-    existing_user = result.scalar_one_or_none()  # 결과에서 하나 또는 None 반환
-    if existing_user:
+    # DB에서 중복 이메일 확인
+    if await check_email(db, user_data.email):
         # 중복 이메일 존재 시 예외 발생
         raise HTTPException(status_code=409, detail="이미 존재하는 이메일입니다.")
     # 새로운 User 인스턴스 생성 (비밀번호는 해시 처리)
     new_user = User(
         name=user_data.name,  # 이름 할당
         email=user_data.email,  # 이메일 할당
-        password=get_password_hash(user_data.password),  # 비밀번호 해시 후 할당
+        password=hash_password(user_data.password),  # 비밀번호 해시 후 할당
         phone_number=user_data.phone_number,  # 전화번호 할당
         birthday=user_data.birthday,  # 생년월일 할당
         gender=user_data.gender,  # 성별 할당
@@ -187,7 +150,7 @@ async def update_user(
         .options(selectinload(User.user_interests).selectinload(UserInterest.interest))
         .filter(User.id == user_id)
     )  # 해당 사용자 검색 쿼리
-    user = result.scalar_one_or_none()  # 사용자 객체 또는 None 반환
+    user = result.unique().scalar_one_or_none()  # 사용자 객체 또는 None 반환
     if not user:
         raise HTTPException(status_code=404, detail="유저가 조회되지 않습니다.")
 
@@ -195,7 +158,7 @@ async def update_user(
     if update_data.name is not None:
         user.name = update_data.name  # 이름 업데이트
     if update_data.password is not None:
-        user.password = get_password_hash(update_data.password)  # 비밀번호 해시 후 업데이트
+        user.password = hash_password(update_data.password)  # 비밀번호 해시 후 업데이트
     if update_data.phone_number is not None:
         user.phone_number = update_data.phone_number  # 전화번호 업데이트
     if update_data.birthday is not None:
@@ -231,6 +194,14 @@ async def update_user(
 
     await db.commit()         # 사용자 정보 업데이트 후 최종 커밋
     await db.refresh(user)    # user 객체를 최신 상태로 갱신
+
+    # Lazy loading 방지용 eager loading 재조회
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.user_interests).selectinload(UserInterest.interest))
+        .filter(User.id == user.id)
+    )
+    user = result.unique().scalar_one()
     # 기존 result 객체를 재사용하는 부분을 제거하여 오류 방지
 
     response_data = {
@@ -339,7 +310,7 @@ async def reset_password(db: AsyncSession, data: PasswordReset) -> dict:
     if not user:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
     # 새로운 비밀번호 해시 처리 후 업데이트
-    user.password = get_password_hash(data.new_password)  # 176
+    user.password = hash_password(data.new_password)  # 176
     await db.commit()  # 변경사항 커밋
     return {"status": "success", "message": "비밀번호가 재설정되었습니다."}  # 결과 반환
 
@@ -367,7 +338,6 @@ async def recommend_jobs(db: AsyncSession, current_user: User) -> dict:
             "industry": job.job_category,
             "company": job.work_place_name,
             "location": job.work_address,
-            "deadline": job.deadline_at.isoformat() if job.deadline_at else None,
         }
         for job in job_postings
     ]

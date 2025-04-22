@@ -4,12 +4,12 @@ from app.core.db import get_db_session
 from app.core.utils import upload_image_to_ncp
 from app.domains.resumes.schemas import ResumeCreate, ResumeUpdate
 from app.domains.resumes.service import (
-    serialize_resume,
     get_resume_for_user,
     create_new_resume,
     update_existing_resume,
     delete_resume_by_id
 )
+from app.domains.resumes.utils import serialize_resume
 from app.domains.users.router import read_current_user
 import logging
 logger = logging.getLogger(__name__)
