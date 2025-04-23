@@ -142,6 +142,7 @@ class JobPostingAdmin(BaseAdmin, model=JobPosting):
     column_list = [
         "id",
         "title",
+        "summary",
         "company.company_name",
         "author.email",
         "job_category",
@@ -162,6 +163,7 @@ class JobPostingAdmin(BaseAdmin, model=JobPosting):
     column_labels = {
         "id": "번호",
         "title": "제목",
+        "summary": "공고 요약 (선택)",
         "author.email": "담당자 이메일",
         "company.company_name": "회사명",
         "recruit_period_start": "모집 시작일",
