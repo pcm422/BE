@@ -29,9 +29,9 @@ async def check_email(db: AsyncSession, email: str) -> dict:
 # 사용자 등록 기능
 async def register_user(db: AsyncSession, user_data: UserRegister) -> dict:
     # DB에서 중복 이메일 확인
-    if await check_email(db, user_data.email):
-        # 중복 이메일 존재 시 예외 발생
-        raise HTTPException(status_code=409, detail="이미 존재하는 이메일입니다.")
+    email_check_result = await check_email(db, user_data.email)  # 이메일 중복 확인 결과 저장
+    if email_check_result["is_duplicate"]:  # 중복된 경우
+        return email_check_result  # 이미 가입된 이메일 메시지 반환
     # 새로운 User 인스턴스 생성 (비밀번호는 해시 처리)
     new_user = User(
         name=user_data.name,  # 이름 할당
