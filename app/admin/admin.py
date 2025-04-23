@@ -68,19 +68,19 @@ class PasswordHashMixin:
 
 # 슈퍼유저 접근 권한 Mixin 클래스
 class SuperuserAccessMixin:
-    async def is_accessible(self, request) -> bool:
+    def is_accessible(self, request) -> bool:
         user = getattr(request.state, "user", None)
         return user and user.is_superuser
 
-    async def has_create_permission(self, request) -> bool:
+    def has_create_permission(self, request) -> bool:
         user = getattr(request.state, "user", None)
         return user and user.is_superuser
 
-    async def has_update_permission(self, request) -> bool:
+    def has_update_permission(self, request) -> bool:
         user = getattr(request.state, "user", None)
         return user and user.is_superuser
 
-    async def has_delete_permission(self, request) -> bool:
+    def has_delete_permission(self, request) -> bool:
         user = getattr(request.state, "user", None)
         return user and user.is_superuser
 
