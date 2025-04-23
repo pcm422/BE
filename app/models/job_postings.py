@@ -102,8 +102,8 @@ class JobPosting(Base):
     is_work_time_negotiable = Column(Boolean, default=False)
 
     description = Column(Text, nullable=True)
+    summary = Column(String(255), nullable=True)
     postings_image = Column(String(255), nullable=False)
-
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 

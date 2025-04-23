@@ -222,8 +222,9 @@ async def search_job_postings(
     # 검색 조건(필터) 동적 추가
     if keyword:
         filters.append(
-            JobPosting.title.ilike(f"%{keyword}%") | # 제목 또는 내용 검색 (OR)
-            JobPosting.description.ilike(f"%{keyword}%")
+            JobPosting.title.ilike(f"%{keyword}%") | # 제목 또는
+            JobPosting.description.ilike(f"%{keyword}%") | # 내용 또는
+            JobPosting.summary.ilike(f"%{keyword}%") # 요약글 검색 (OR)
         )
     if location:
         filters.append(JobPosting.work_address.ilike(f"%{location}%"))

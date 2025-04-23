@@ -129,6 +129,7 @@ class JobPostingBase(BaseModel):
     work_end_time: Optional[str] = Field(None, max_length=5, description="근무 종료 시간 (HH:MM)")
     is_work_time_negotiable: Optional[bool] = Field(False, description="근무 시간 협의 가능 여부")
     description: Optional[str] = Field(None, description="상세 설명")
+    summary: Optional[str] = Field(None, description="채용 공고 요약글")
     postings_image: Optional[str] = Field(None, description="공고 이미지 URL")
     latitude: Optional[float] = Field(None, description="근무지 위도")
     longitude: Optional[float] = Field(None, description="근무지 경도")
@@ -307,6 +308,7 @@ class JobPostingCreateFormData:
         work_end_time: Optional[str] = Form(None, description="근무 종료 시간 (HH:MM)"),
         is_work_time_negotiable_str: str = Form("False", description="근무 시간 협의 가능 여부 ('True' 또는 'False')"),
         description: Optional[str] = Form(None, description="상세 설명"),
+        summary: Optional[str] = Form(None, description="채용 공고 요약글"),
         latitude: Optional[str] = Form(None, description="근무지 위도 (숫자)"),
         longitude: Optional[str] = Form(None, description="근무지 경도 (숫자)"),
     ):
@@ -336,6 +338,7 @@ class JobPostingCreateFormData:
         self.work_end_time = work_end_time
         self.is_work_time_negotiable_str = is_work_time_negotiable_str
         self.description = description
+        self.summary = summary
         self.latitude = latitude
         self.longitude = longitude
 
@@ -381,6 +384,7 @@ class JobPostingCreateFormData:
                 "work_end_time": self.work_end_time,
                 "is_work_time_negotiable": self.is_work_time_negotiable,
                 "description": self.description,
+                "summary": self.summary,
                 "postings_image": postings_image_url,
                 "latitude": _parse_float(self.latitude, "위도"),
                 "longitude": _parse_float(self.longitude, "경도"),
