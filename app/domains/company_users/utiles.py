@@ -1,7 +1,10 @@
 from typing import Any, Dict
-
+import jwt
 import bcrypt
+from dns.dnssecalgs import algorithms
 from fastapi import HTTPException, status
+
+from app.core.config import SECRET_KEY, ALGORITHM
 
 
 # 비밀번호 해싱 (DB 저장시)
@@ -13,6 +16,16 @@ def hash_password(password: str) -> str:
 # 비밀번호 검증 (로그인시)
 def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+
+# 토큰 검증
+def decode_refresh_token(refresh_token: str) :
+    try:
+        return jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않은 리프레쉬 토큰입니다."
+        )
 
 
 # 비밀번호 일치 확인

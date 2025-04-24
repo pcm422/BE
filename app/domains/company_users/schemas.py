@@ -41,6 +41,10 @@ class CompanyUserLoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+### 리프레쉬 토큰 요청
+class CompanyTokenRefreshRequest(BaseModel):
+    refresh_token: str
+
 
 ### 기업 회원 수정 요청 (선택필드)
 class CompanyUserUpdateRequest(BaseModel):
