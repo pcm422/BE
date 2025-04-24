@@ -1,8 +1,7 @@
 from datetime import date
 from typing import Generic, List, Optional, TypeVar
 
-from pydantic import (BaseModel, ConfigDict, EmailStr, Field, constr,
-                      field_validator)
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, constr, field_validator
 
 
 ### 기업 회원 공통 베이스
@@ -31,7 +30,7 @@ class PasswordMixin(BaseModel):
     confirm_password: constr(min_length=8)
 
 
-### 기업 화원 가입 요청
+### 기업 회원 가입 요청
 class CompanyUserRegisterRequest(CompanyUserBase, PasswordMixin):
     pass
 
@@ -40,6 +39,7 @@ class CompanyUserRegisterRequest(CompanyUserBase, PasswordMixin):
 class CompanyUserLoginRequest(BaseModel):
     email: EmailStr
     password: str
+
 
 ### 리프레쉬 토큰 요청
 class CompanyTokenRefreshRequest(BaseModel):
@@ -85,7 +85,7 @@ class SuccessResponse(BaseModel, Generic[T]):
 class JobPostingsSummary(BaseModel):  # 공고 요약
     id: int
     title: str
-    summary :Optional[str]
+    summary: Optional[str]
     work_address: str
     is_always_recruiting: bool
     recruit_period_start: date
