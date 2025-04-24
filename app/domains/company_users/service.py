@@ -293,4 +293,4 @@ async def refresh_company_user_access_token(
         )
     new_access_token = await create_access_token(data={"sub": user.email})
 
-    return new_access_token
+    return {"access_token": new_access_token}
