@@ -6,7 +6,7 @@ from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import relationship
 
 # 유틸리티 함수 임포트
-from app.core.datetime_utils import get_now_kst
+from app.core.datetime_utils import get_now_utc
 from app.models import Base
 
 
@@ -37,12 +37,12 @@ class User(Base):
     is_active = Column(Boolean, nullable=False, default=False)  # 이메일 활성상태
     created_at = Column(
         DateTime(timezone=True), # timezone=True 추가
-        default=get_now_kst # 유틸리티 함수 사용
+        default=get_now_utc # 유틸리티 함수 사용
     )
     updated_at = Column(
         DateTime(timezone=True), # timezone=True 추가
-        default=get_now_kst, # 유틸리티 함수 사용
-        onupdate=get_now_kst # 유틸리티 함수 사용
+        default=get_now_utc, # 유틸리티 함수 사용
+        onupdate=get_now_utc # 유틸리티 함수 사용
     )
 
     # 관계

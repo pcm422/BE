@@ -6,7 +6,7 @@ from sqlalchemy import ForeignKey, Integer, String, Text, Float
 from sqlalchemy.orm import relationship
 
 # 유틸리티 함수 임포트
-from app.core.datetime_utils import get_now_kst
+from app.core.datetime_utils import get_now_utc
 from app.models.base import Base
 
 
@@ -107,8 +107,8 @@ class JobPosting(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=get_now_kst)
-    updated_at = Column(DateTime(timezone=True), default=get_now_kst, onupdate=get_now_kst)
+    created_at = Column(DateTime(timezone=True), default=get_now_utc)
+    updated_at = Column(DateTime(timezone=True), default=get_now_utc, onupdate=get_now_utc)
 
     # 관계 설정
     author = relationship("CompanyUser", back_populates="job_postings")

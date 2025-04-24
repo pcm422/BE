@@ -3,7 +3,7 @@ from datetime import date
 from pydantic import field_validator
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Text
 from sqlalchemy.orm import relationship
-from app.core.datetime_utils import get_now_kst
+from app.core.datetime_utils import get_now_utc
 from app.models.base import Base
 
 
@@ -19,8 +19,8 @@ class ResumeExperience(Base):                              # 경력사항 테이
     start_date = Column(Date, nullable=True)               # 근무 시작일
     end_date = Column(Date, nullable=True)                 # 근무 종료일
     description = Column(Text, nullable=True)              # 상세 업무 내용
-    created_at = Column(DateTime(timezone=True), default=get_now_kst)    # 생성일
-    updated_at = Column(DateTime(timezone=True), default=get_now_kst, onupdate=get_now_kst)  # 수정일
+    created_at = Column(DateTime(timezone=True), default=get_now_utc)    # 생성일
+    updated_at = Column(DateTime(timezone=True), default=get_now_utc, onupdate=get_now_utc)  # 수정일
 
     resume = relationship("Resume", back_populates="experiences")
 

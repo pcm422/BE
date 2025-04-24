@@ -6,7 +6,7 @@ from sqlalchemy import ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 # 유틸리티 함수 임포트
-from app.core.datetime_utils import get_now_kst
+from app.core.datetime_utils import get_now_utc
 from app.models.base import Base
 
 
@@ -37,11 +37,11 @@ class JobApplication(Base):
         default=ApplicationStatusEnum.applied,
     )
 
-    created_at = Column(DateTime(timezone=True), default=get_now_kst)
+    created_at = Column(DateTime(timezone=True), default=get_now_utc)
     updated_at = Column(
         DateTime(timezone=True),
-        default=get_now_kst,
-        onupdate=get_now_kst,
+        default=get_now_utc,
+        onupdate=get_now_utc,
     )
 
     # 관계
