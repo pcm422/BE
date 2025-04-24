@@ -81,6 +81,7 @@ class SuccessResponse(BaseModel, Generic[T]):
 class JobPostingsSummary(BaseModel):  # 공고 요약
     id: int
     title: str
+    summary :Optional[str]
     work_address: str
     is_always_recruiting: bool
     recruit_period_start: date
