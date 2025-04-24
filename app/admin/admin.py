@@ -33,9 +33,7 @@ def format_datetime_kst(model, name: str) -> str:
     if value is None:
         return ""
     if isinstance(value, datetime.datetime):
-        # astimezone() 변환 없이 원래 시간 값 사용
-        # 시간대 표시만 " KST"로 고정
-        return value.strftime("%Y-%m-%d %H:%M:%S KST")
+        return value.astimezone(KST).strftime("%Y-%m-%d %H:%M:%S KST")
     elif isinstance(value, datetime.date):
          return value.strftime("%Y-%m-%d")
     return str(value)
