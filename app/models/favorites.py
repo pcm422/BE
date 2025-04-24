@@ -2,7 +2,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 
 # 유틸리티 함수 임포트
-from app.core.datetime_utils import get_now_kst
+from app.core.datetime_utils import get_now_utc
 from app.models.base import Base
 
 
@@ -12,7 +12,7 @@ class Favorite(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     job_posting_id = Column(Integer, ForeignKey("job_postings.id"), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=get_now_kst) # 유틸리티 함수 사용
+    created_at = Column(DateTime(timezone=True), default=get_now_utc) # 유틸리티 함수 사용
 
     # 관계
     user = relationship("User", back_populates="favorites")

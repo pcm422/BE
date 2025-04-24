@@ -5,7 +5,7 @@ from sqlalchemy import Column, Date, DateTime
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
-from app.core.datetime_utils import get_now_kst
+from app.core.datetime_utils import get_now_utc
 from app.models import Base
 
 
@@ -16,8 +16,8 @@ class Resume(Base):
     resume_image = Column(String(255), nullable=True)  # 이력서 사진
     desired_area = Column(String(255), nullable=True)  # 희망 지역
     introduction = Column(Text, nullable=True)  # 자기소개
-    created_at = Column(DateTime(timezone=True), default=get_now_kst)  # 생성일
-    updated_at = Column(DateTime(timezone=True), default=get_now_kst, onupdate=get_now_kst)  # 수정일
+    created_at = Column(DateTime(timezone=True), default=get_now_utc)  # 생성일
+    updated_at = Column(DateTime(timezone=True), default=get_now_utc, onupdate=get_now_utc)  # 수정일
 
     # 관계
     user = relationship("User", back_populates="resumes", lazy="selectin")

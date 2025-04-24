@@ -7,7 +7,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from app.core.datetime_utils import get_now_kst
+from app.core.datetime_utils import get_now_utc
 from app.models import Base
 
 
@@ -40,8 +40,8 @@ class ResumeEducation(Base):
     )  # 학력 상태
     start_date = Column(Date, nullable=True)  # 입학일
     end_date = Column(Date, nullable=True)  # 졸업(예정)일
-    created_at = Column(DateTime(timezone=True), default=get_now_kst)  # 생성일
-    updated_at = Column(DateTime(timezone=True), default=get_now_kst, onupdate=get_now_kst)  # 수정일
+    created_at = Column(DateTime(timezone=True), default=get_now_utc)  # 생성일
+    updated_at = Column(DateTime(timezone=True), default=get_now_utc, onupdate=get_now_utc)  # 수정일
 
     # 관계
     resume = relationship("Resume", back_populates="educations", lazy="selectin")
