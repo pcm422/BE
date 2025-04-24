@@ -1,26 +1,35 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
-from app.core.utils import (create_access_token, create_refresh_token,
-                            get_current_company_user)
-from app.domains.company_users.schemas import (CompanyUserInfo,
-                                               CompanyUserLoginRequest,
-                                               CompanyUserLoginResponse,
-                                               CompanyUserRegisterRequest,
-                                               CompanyUserRegisterResponse,
-                                               CompanyUserUpdateRequest,
-                                               CompanyUserUpdateResponse,
-                                               FindCompanyUserEmail,
-                                               ResetCompanyUserPassword,
-                                               SuccessResponse, CompanyTokenRefreshRequest)
-from app.domains.company_users.service import (delete_company_user,
-                                               find_company_user_email,
-                                               get_company_user_mypage,
-                                               login_company_user,
-                                               register_company_user,
-                                               reset_company_user_password,
-                                               update_company_user, refresh_company_user_access_token)
+from app.core.utils import (
+    create_access_token,
+    create_refresh_token,
+    get_current_company_user,
+)
+from app.domains.company_users.schemas import (
+    CompanyTokenRefreshRequest,
+    CompanyUserInfo,
+    CompanyUserLoginRequest,
+    CompanyUserLoginResponse,
+    CompanyUserRegisterRequest,
+    CompanyUserRegisterResponse,
+    CompanyUserUpdateRequest,
+    CompanyUserUpdateResponse,
+    FindCompanyUserEmail,
+    ResetCompanyUserPassword,
+    SuccessResponse,
+)
+from app.domains.company_users.service import (
+    delete_company_user,
+    find_company_user_email,
+    get_company_user_mypage,
+    login_company_user,
+    refresh_company_user_access_token,
+    register_company_user,
+    reset_company_user_password,
+    update_company_user,
+)
 from app.domains.company_users.utiles import success_response
 from app.models import CompanyUser
 
@@ -201,10 +210,13 @@ async def reset_password_companyuser(
     )
 
 
-@router.post("/auth/refresh-token",
-             summary="기업 회원 토큰 재발급",)
-async def refresh_token_companyuser(token_data:CompanyTokenRefreshRequest,
-                                    db: AsyncSession = Depends(get_db_session)):
-    result= await refresh_company_user_access_token(db=db, token_data=token_data)
-    return success_response("토큰 재발급이 완료되었습니다.",
-        data=result)
+@router.post(
+    "/auth/refresh-token",
+    summary="기업 회원 토큰 재발급",
+    response_model=SuccessResponse[dict],
+)
+async def refresh_token_companyuser(
+    token_data: CompanyTokenRefreshRequest, db: AsyncSession = Depends(get_db_session)
+):
+    result = await refresh_company_user_access_token(db=db, token_data=token_data)
+    return success_response("토큰 재발급이 완료되었습니다.", data=result)
