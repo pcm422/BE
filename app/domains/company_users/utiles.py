@@ -1,7 +1,6 @@
 from typing import Any, Dict
 import jwt
 import bcrypt
-from dns.dnssecalgs import algorithms
 from fastapi import HTTPException, status
 
 from app.core.config import SECRET_KEY, ALGORITHM
@@ -21,7 +20,12 @@ def verify_password(password: str, hashed_password: str) -> bool:
 def decode_refresh_token(refresh_token: str) :
     try:
         return jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-    except jwt.PyJWTError:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="리프레쉬 토큰이 만료되었습니다."
+        )
+    except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않은 리프레쉬 토큰입니다."

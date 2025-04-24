@@ -207,4 +207,4 @@ async def refresh_token_companyuser(token_data:CompanyTokenRefreshRequest,
                                     db: AsyncSession = Depends(get_db_session)):
     result= await refresh_company_user_access_token(db=db, token_data=token_data)
     return success_response("토큰 재발급이 완료되었습니다.",
-        result)
+        data=result)
