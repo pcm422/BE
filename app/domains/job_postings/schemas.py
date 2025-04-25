@@ -3,7 +3,7 @@ from datetime import date, datetime
 from typing import Type, TypeVar, Optional
 import traceback
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, field_serializer, field_validator, model_validator, Field, ValidationError
 from fastapi import Form, HTTPException, status
 
 from app.core.datetime_utils import to_kst
@@ -226,12 +226,11 @@ class JobPostingResponse(JobPostingBase):
     updated_at: datetime
     is_favorited: Optional[bool] = Field(None, description="현재 로그인한 사용자의 즐겨찾기 여부 (비로그인 시 null)")
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={
-            datetime: to_kst # datetime 처리 추가
-        }
-    )
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer('created_at', 'updated_at', when_used='json')
+    def serialize_datetime(self, value: datetime):
+        return to_kst(value)
 
 
 

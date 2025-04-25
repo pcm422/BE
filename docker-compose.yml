@@ -12,6 +12,7 @@ services:
       - ./alembic.ini:/app/alembic.ini # alembic 설정 파일 마운트
       - ./pyproject.toml:/app/pyproject.toml # pyproject.toml 변경 시 확인용
       - ./poetry.lock:/app/poetry.lock # poetry.lock 변경 시 확인용
+      - ./tests:/app/tests # 테스트 디렉토리 마운트
     ports:
       - "8000:8000" # 호스트 8000번 포트를 컨테이너 8000번 포트에 연결
     environment:
