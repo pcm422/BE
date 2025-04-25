@@ -12,8 +12,8 @@ class CompanyUserBase(BaseModel):
     manager_email: EmailStr  # 담당자 이메일
     company_name: constr(min_length=1)  # 기업명
     ceo_name: constr(min_length=1)  # 대표자 성함
-    opening_date: str
-    business_reg_number: constr(min_length=10, max_length=12)
+    opening_date: str # 개업일자
+    business_reg_number: str
     company_intro: constr(min_length=10)  # 기업 소개
 
     @field_validator("manager_phone")
@@ -23,6 +23,25 @@ class CompanyUserBase(BaseModel):
             raise ValueError("담당자 전화번호는 숫자만 포함해야 합니다.")
         return v
 
+    @field_validator("opening_date")
+    @classmethod
+    def validate_opening_date(cls, v):
+        # YYYYMMDD 형태로 숫자만 허용
+        if not v.isdigit():
+            raise ValueError("개업일자(opening_date)는 숫자만 입력해야 합니다.")
+        if len(v) != 8:
+            raise ValueError("개업일자(opening_date)는 YYYYMMDD 형식이어야 합니다.")
+        return v
+
+    @field_validator("business_reg_number")
+    @classmethod
+    def validate_business_reg_number(cls, v):
+        # 숫자만 10자리로 정확히 맞춰서 검사
+        if not v.isdigit():
+            raise ValueError("사업자등록번호는 숫자만 포함해야 합니다.")
+        if len(v) != 10:
+            raise ValueError("사업자등록번호는 정확히 10자리여야 합니다.")
+        return v
 
 ### 패스워드 확인용 믹스인
 class PasswordMixin(BaseModel):
