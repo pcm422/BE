@@ -17,7 +17,6 @@ from app.domains.company_users.utiles import (
     check_password_match,
     decode_refresh_token,
     hash_password,
-    success_response,
     verify_password,
 )
 from app.models import CompanyInfo, CompanyUser
@@ -81,11 +80,11 @@ async def create_company_user(
 
 # 기업 회원 가입
 async def register_company_user(db: AsyncSession, payload: CompanyUserRegisterRequest):
+    # 이메일, 사업자 중복 확인
+    await check_dupl_email(db, payload.email)
+    await check_dupl_business_number(db, payload.business_reg_number)
     # 비밀번호 일치 확인
     check_password_match(payload.password, payload.confirm_password)
-    # 중복 확인
-    await check_dupl_email(db, str(payload.email))
-    await check_dupl_business_number(db, payload.business_reg_number)
 
     # 정보 저장
     try:
@@ -111,11 +110,13 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
 
     # 유효값 검증
     if not company_user:
-        raise HTTPException(404, detail="가입되지 않은 이메일입니다.")
+        raise HTTPException(
+            status_code=401,
+            detail="이메일 또는 비밀번호가 일치하지 않습니다.")
     if not verify_password(password, company_user.password):
         raise HTTPException(
             status_code=401,
-            detail="비밀번호가 일치하지 않습니다.",
+            detail="이메일 또는 비밀번호가 일치하지 않습니다.",
         )
     return company_user
 

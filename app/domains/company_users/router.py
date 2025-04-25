@@ -28,7 +28,7 @@ from app.domains.company_users.service import (
     refresh_company_user_access_token,
     register_company_user,
     reset_company_user_password,
-    update_company_user,
+    update_company_user, check_dupl_email, check_dupl_business_number,
 )
 from app.domains.company_users.utiles import success_response
 from app.models import CompanyUser
@@ -44,9 +44,8 @@ router = APIRouter(prefix="/company", tags=["기업 회원"])  # URL 앞 부분
     response_model=SuccessResponse[CompanyUserRegisterResponse],
     responses={
         201: {"description": "회원가입 성공"},
-        409: {"description": "중복 이메일 또는 중복된 사업자등록번호"},
-        500: {"description": "서버 에러"},
         400: {"description": "비밀번호 불일치"},
+        500: {"description": "서버 에러"},
     },
 )
 async def register_companyuser(
@@ -60,7 +59,36 @@ async def register_companyuser(
     )
     return success_response("회원가입이 완료 되었습니다.", data=user_data)
 
+# 회원가입시 이메일 중복 확인
+@router.get(
+    "/register/check-email",
+    summary="이메일 중복 체크",
+    response_model=SuccessResponse[dict],
+    responses={409 : {"description": "이미 사용 중인 이메일"}}
+)
+async def check_companyuser_email(
+        email: str,
+        db: AsyncSession = Depends(get_db_session),
+):
+    await check_dupl_email(db,email)
+    return success_response("사용 가능한 이메일 입니다.", data={"email": email})
 
+# 회원가입시 사업자번호 중복 확인
+@router.get(
+    "/register/check-brn",
+    summary="사업자등록번호 중복 체크",
+    response_model=SuccessResponse[dict],
+    responses={409:{"description": "이미 등록된 사업자등록번호"}}
+)
+async def check_companyuser_brn(
+        business_reg_number: str,
+        db: AsyncSession = Depends(get_db_session),
+):
+    await check_dupl_business_number(db,business_reg_number)
+    return success_response(
+        "사용 가능한 사업자 등록번호입니다.",
+        data={"business_reg_number": business_reg_number}
+    )
 # 로그인
 @router.post(
     "/login",
@@ -209,7 +237,7 @@ async def reset_password_companyuser(
         data={"email": result},
     )
 
-
+# 기업 회원 토큰 재발급
 @router.post(
     "/auth/refresh-token",
     summary="기업 회원 토큰 재발급",
