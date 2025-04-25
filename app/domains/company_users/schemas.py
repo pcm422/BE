@@ -105,7 +105,6 @@ class CompanyUserLoginResponse(BaseModel):  # 로그인 응답
     company_user_id: int
     email: EmailStr
     company_name: str
-    token_type: str = "bearer"
     access_token: str
     refresh_token: str
 
