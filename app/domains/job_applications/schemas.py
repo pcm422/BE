@@ -5,6 +5,15 @@ from pydantic import BaseModel, Field
 
 from app.models.job_applications import ApplicationStatusEnum
 
+class JobPostingSummary(BaseModel):
+    """간략한 채용공고 정보"""
+    title: str
+    company_id: int
+    recruit_period_start: datetime
+    recruit_period_end: datetime
+    work_address: str
+    work_place_name: str
+
 class ResumeApplyCreate(BaseModel):
     """사용자가 이력서를 채용공고에 지원할 때 사용하는 입력"""
     job_posting_id: int = Field(..., description="지원할 채용공고 ID")
@@ -18,6 +27,7 @@ class JobApplicationRead(BaseModel):
     id: int                          # 지원 PK
     user_id: int                     # 지원자 사용자 PK
     job_posting_id: int              # 지원된 채용공고 PK
+    job_posting: Optional[JobPostingSummary] = Field(None, description="지원한 채용공고 정보")
     resumes_data: dict = Field(..., description="지원 시점 이력서 데이터")
     status: ApplicationStatusEnum    # 지원 상태
     email_sent: Optional[bool] = Field(default=True, description="이메일 발송 성공 여부 (기본 True)") # 이메일 발송 여부
