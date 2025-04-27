@@ -135,8 +135,7 @@ async def login_user(db: AsyncSession, user_data: UserLogin) -> dict:
                 "email": user.email,
             },  # 사용자 정보
         },
-    }  # 90
-
+    }
 
 # 사용자 프로필 업데이트 기능
 async def update_user(
@@ -158,8 +157,13 @@ async def update_user(
     # 각 필드 업데이트
     if update_data.name is not None:
         user.name = update_data.name  # 이름 업데이트
+    # 비밀번호 변경 로직: 현재 비밀번호 확인 후 새 비밀번호로 변경
     if update_data.password is not None:
-        user.password = hash_password(update_data.password)  # 비밀번호 해시 후 업데이트
+        if update_data.current_password is None:
+            raise HTTPException(status_code=400, detail="현재 비밀번호를 입력해야 합니다.")
+        if not verify_password(update_data.current_password, user.password):
+            raise HTTPException(status_code=401, detail="현재 비밀번호가 일치하지 않습니다.")
+        user.password = hash_password(update_data.password)  # 새 비밀번호로 업데이트
     if update_data.phone_number is not None:
         user.phone_number = update_data.phone_number  # 전화번호 업데이트
     if update_data.birthday is not None:
