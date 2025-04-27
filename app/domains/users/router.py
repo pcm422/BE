@@ -1,9 +1,10 @@
 import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.db import get_db_session
-from app.models import User
+from app.models import User, UserInterest
 
 from .schemas import (PasswordReset, TokenRefreshRequest, UserLogin,
                       UserProfileUpdate, UserRegister)
@@ -52,8 +53,10 @@ async def read_current_user(
     from sqlalchemy.future import select
 
     result = await db.execute(
-        select(User).filter(User.id == int(user_id))
-    )  # 사용자 ID로 DB에서 사용자 조회
+        select(User)
+        .options(selectinload(User.user_interests).selectinload(UserInterest.interest))
+        .filter(User.id == int(user_id))
+    )
     user = result.scalar_one_or_none()  # 조회된 사용자 객체 반환 또는 예외 발생
     if user is None:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
@@ -151,6 +154,18 @@ async def refresh_token(token_data: TokenRefreshRequest, db=Depends(get_db_sessi
     )  # service의 refresh_access_token 호출
     return result  # 결과 반환
 
+# 관심분야 기반 추천 채용공고 제공
+@router.get("/user/recommend", tags=["사용자"])
+async def recommend(
+    current_user: User = Depends(read_current_user), db=Depends(get_db_session)
+):
+    """
+    사용자에게 추천 채용공고를 제공하는 엔드포인트입니다.
+    현재 사용자의 정보를 받아 추천 비즈니스 로직을 호출합니다.
+    """
+    result = await recommend_jobs(db, current_user)  # service의 recommend_jobs 호출
+    return result  # 결과 반환
+
 
 # 사용자 정보 조회
 @router.get("/user/{user_id}", tags=["사용자"])
@@ -177,17 +192,4 @@ async def reset_pw(data: PasswordReset, db=Depends(get_db_session)):
     비밀번호 재설정 정보를 받아 비즈니스 로직을 호출합니다.
     """
     result = await reset_password(db, data)  # service의 reset_password 호출
-    return result  # 결과 반환
-
-
-# 관심분야 기반 추천 채용공고 제공
-@router.get("/user/recommend", tags=["사용자"])
-async def recommend(
-    current_user: User = Depends(read_current_user), db=Depends(get_db_session)
-):
-    """
-    사용자에게 추천 채용공고를 제공하는 엔드포인트입니다.
-    현재 사용자의 정보를 받아 추천 비즈니스 로직을 호출합니다.
-    """
-    result = await recommend_jobs(db, current_user)  # service의 recommend_jobs 호출
     return result  # 결과 반환

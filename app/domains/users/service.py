@@ -5,11 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-from app.models import Interest, User, UserInterest
+from app.models import Interest, User, UserInterest, JobPosting
 
 from .schemas import (PasswordReset, TokenRefreshRequest, UserLogin,
                       UserProfileUpdate, UserRegister)
 from ..company_users.utiles import verify_password
+from ..job_postings.service import _attach_favorite_status
 from ...core.config import SECRET_KEY, ALGORITHM
 from ...core.utils import hash_password, create_access_token, create_refresh_token
 
@@ -317,11 +318,11 @@ async def reset_password(db: AsyncSession, data: PasswordReset) -> dict:
 
 # 관심분야 기반 추천 채용공고 제공 기능
 async def recommend_jobs(db: AsyncSession, current_user: User) -> dict:
+    """관심분야 기반 추천 채용공고 제공 + 즐겨찾기 여부 포함"""
     # 사용자의 관심분야 추출
     user_interests = [ui.interest.name for ui in current_user.user_interests]
 
-    # DB에서 관심분야에 해당하는 채용공고 검색
-    from app.models import JobPosting  # JobPosting 모델 import 필요
+    # 관심분야에 해당하는 채용공고 조회
     result = await db.execute(
         select(JobPosting).filter(JobPosting.job_category.in_(user_interests))
     )
@@ -330,14 +331,18 @@ async def recommend_jobs(db: AsyncSession, current_user: User) -> dict:
     if not job_postings:
         raise HTTPException(status_code=404, detail="해당 채용정보를 찾을 수 없습니다.")
 
-    # 직렬화된 응답 데이터 구성
+    # 여기서 즐겨찾기 상태 추가
+    await _attach_favorite_status(db, job_postings, current_user.id)
+
+    # 최종 직렬화된 응답 데이터
     job_list = [
         {
-            "job_id": job.id,
-            "title": job.title,
-            "industry": job.job_category,
-            "company": job.work_place_name,
-            "location": job.work_address,
+            "job_id": job.id,  # 공고 ID
+            "company_name": job.work_place_name,  # 근무지명
+            "title": job.title,  # 제목
+            "recruit_period_end": job.recruit_period_end,  # 모집 종료일
+            "location": job.work_address,  # 근무 위치
+            "is_favorited": job.is_favorited,  # 즐겨찾기 여부
         }
         for job in job_postings
     ]
