@@ -1,6 +1,7 @@
 import jwt
 from dotenv import load_dotenv
 from fastapi import HTTPException
+from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -353,9 +354,33 @@ async def recommend_jobs(db: AsyncSession, current_user: User) -> dict:
 
     return {"status": "success", "data": job_list}
 
-
 # 이메일로 사용자 조회 함수 (외부 참조용)
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     # 이메일을 기준으로 사용자를 조회하는 함수
     result = await db.execute(select(User).filter(User.email == email))
     return result.scalar_one_or_none()
+
+async def find_my_email_user_info(db: AsyncSession, name: str, phone_number:str, birthday: str) -> dict:
+    '''
+    이름, 전화번호, 생년월일로 이메일을 찾는 서비스
+    '''
+    result = await db.execute(
+        select(User).filter(
+            and_(
+            User.name == name,
+            User.phone_number == phone_number,
+            User.birthday == birthday
+            )
+        )
+    )
+    user = result.scalar_one_or_none() #결과
+
+    # 사용자 존재 여부 확인
+    if not user:
+        raise HTTPException(status_code=404, detail="일치하는 사용자를 찾을수 없습니다.")
+
+    # 이메일 반환
+    return {
+        "status": "success",
+        "data": {"email":user.email}
+    }

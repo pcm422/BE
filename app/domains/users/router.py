@@ -7,7 +7,7 @@ from app.core.db import get_db_session
 from app.models import User, UserInterest
 
 from .schemas import (PasswordReset, TokenRefreshRequest, UserLogin,
-                      UserProfileUpdate, UserRegister)
+                      UserProfileUpdate, UserRegister, FindEmailRequest)
 from .service import (
     ALGORITHM,
     SECRET_KEY,
@@ -19,7 +19,7 @@ from .service import (
     register_user,
     reset_password,
     update_user,
-    check_email,
+    check_email, find_my_email_user_info,
 )
 
 router = APIRouter()
@@ -193,3 +193,15 @@ async def reset_pw(data: PasswordReset, db=Depends(get_db_session)):
     """
     result = await reset_password(db, data)  # service의 reset_password 호출
     return result  # 결과 반환
+
+@router.post("/user/find_email", tags=["사용자"])
+async def find_email(payload: FindEmailRequest,db=Depends(get_db_session)):
+    """
+    이름, 전화번호, 생년월일을 이용해 가입된 이메일을 찾습니다.
+    """
+    return await find_my_email_user_info(
+        db=db,
+        name=payload.name,
+        phone_number=payload.phone_number,
+        birthday=payload.birthday
+    )
