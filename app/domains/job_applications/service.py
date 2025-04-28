@@ -95,15 +95,38 @@ async def create_application(
 # 사용자가 지원한 모든 공고 내역을 조회
 async def get_user_applications(
     user_id: int, session: AsyncSession
-) -> List[JobApplication]:
-    """사용자가 지원한 모든 공고 내역 조회"""
+) -> List[dict]:
+    """사용자가 지원한 모든 공고 내역 조회 (공고 정보 포함)"""
     try:  # 예외 처리 시작
         res = await session.execute(
-            select(JobApplication)
+            select(JobApplication, JobPosting)
+            .join(JobPosting, JobApplication.job_posting_id == JobPosting.id)
             .filter(JobApplication.user_id == user_id)
-            .order_by(JobApplication.created_at.desc())  # 사용자 지원 내역 조회
+            .order_by(JobApplication.created_at.desc())
         )
-        return res.scalars().all()  # 결과 반환
+        results = res.all()  # (JobApplication, JobPosting) 튜플 목록
+
+        applications = []
+        for application, posting in results:
+            applications.append({
+                "id": application.id,
+                "user_id": application.user_id,
+                "job_posting_id": application.job_posting_id,
+                "job_posting": {
+                    "title": posting.title,
+                    "company_id": posting.company_id,
+                    "recruit_period_start": posting.recruit_period_start,
+                    "recruit_period_end": posting.recruit_period_end,
+                    "work_address": posting.work_address,
+                    "work_place_name": posting.work_place_name,
+                },
+                "resumes_data": application.resumes_data,
+                "status": application.status.value,
+                "created_at": application.created_at,
+                "updated_at": application.updated_at,
+            })
+
+        return applications  # 결과 반환
     except SQLAlchemyError as e:  # SQLAlchemy 에러 발생 시
         await session.rollback()  # 세션 롤백
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"지원 내역 조회 중 오류: {str(e)}")  # 500 에러 발생

@@ -46,8 +46,11 @@ class UserProfileUpdate(BaseModel):
         None, max_length=50, description="사용자 이름 (최대 50자)"
     )  # 이름 업데이트: 선택 사항
     password: Optional[str] = Field(
-        None, description="비밀번호"
-    )  # 비밀번호 업데이트: 선택 사항
+        None, description="새로운 비밀번호"
+    )  # 새로운 비밀번호 업데이트: 선택 사항
+    current_password: Optional[str] = Field(
+        None, description="현재 비밀번호 (새 비밀번호 변경 시 필요)"
+    )  # ✅ 추가: 현재 비밀번호 입력
     phone_number: Optional[str] = Field(
         None, description="전화번호"
     )  # 전화번호 업데이트: 선택 사항
