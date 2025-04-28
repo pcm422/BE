@@ -67,12 +67,10 @@ async def get_current_user_optional(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        # JWT payload의 'sub' 클레임에서 사용자 이메일 문자열 추출
-        user_email: str = payload.get("sub")
-        if user_email is None:
+        user_sub = payload.get("sub")
+        if user_sub is None:
             print("경고: JWT 페이로드에 'sub' 클레임이 없습니다.")
             return None
-
     except jwt.ExpiredSignatureError:
         print("경고: JWT 토큰이 만료되었습니다.")
         return None
@@ -83,11 +81,16 @@ async def get_current_user_optional(
         print(f"JWT 디코딩 또는 페이로드 접근 중 오류 발생: {e}")
         return None
 
-    # 데이터베이스에서 일반 사용자 조회 (이메일 기준)
+    # user_sub이 숫자면 id로, 아니면 이메일로 조회
     try:
-        result = await db.execute(
-            select(User).filter(User.email == user_email)
-        )
+        if user_sub.isdigit():
+            result = await db.execute(
+                select(User).filter(User.id == int(user_sub))
+            )
+        else:
+            result = await db.execute(
+                select(User).filter(User.email == user_sub)
+            )
         user = result.scalar_one_or_none()
         return user
     except Exception as e:
