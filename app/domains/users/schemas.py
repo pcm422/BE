@@ -50,7 +50,7 @@ class UserProfileUpdate(BaseModel):
     )  # 새로운 비밀번호 업데이트: 선택 사항
     current_password: Optional[str] = Field(
         None, description="현재 비밀번호 (새 비밀번호 변경 시 필요)"
-    )  # ✅ 추가: 현재 비밀번호 입력
+    )  # 현재 비밀번호 입력
     phone_number: Optional[str] = Field(
         None, description="전화번호"
     )  # 전화번호 업데이트: 선택 사항
@@ -83,3 +83,9 @@ class PasswordReset(BaseModel):
 # 리프레쉬 토큰을 사용한 액세스 토큰 재발급 요청 스키마 클래스
 class TokenRefreshRequest(BaseModel):
     refresh_token: str = Field(..., description="리프레쉬 토큰")  # 리프레쉬 토큰: 필수
+
+# 이메일 찾는 스키마
+class FindEmailRequest(BaseModel):
+    name: str
+    phone_number: str
+    birthday: str  # "YYYY-MM-DD"
