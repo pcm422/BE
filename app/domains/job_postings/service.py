@@ -1,14 +1,16 @@
 from typing import Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, desc, and_
+from sqlalchemy import func, desc, and_, cast, Date
 from fastapi import UploadFile, HTTPException, status
+from datetime import datetime
 
 from app.domains.job_postings.schemas import JobPostingUpdate, JobPostingCreate
 from app.models.job_postings import JobPosting
 from app.models.job_applications import JobApplication
 from app.models.favorites import Favorite
 from app.core.utils import upload_image_to_ncp
+from app.models.users import User
 
 
 # --- Helper Functions (Internal Service Logic) ---
@@ -310,5 +312,68 @@ async def get_popular_job_postings(
     await _attach_favorite_status(session, postings, user_id)
 
     # total_count는 조회된 인기 공고 수 반환
+    total_count = len(postings)
+    return postings, total_count
+
+
+async def get_popular_job_postings_for_user_age_group(
+    session: AsyncSession,
+    user: User,
+    limit: int = 10
+) -> tuple[list[JobPosting], int]:
+    """
+    로그인한 사용자의 나이대(30~40, 40~50, 50~60, 60~70, 70~80)에 따라 해당 연령대에서 지원이 많은 인기 공고를 집계
+    """
+    # 1. 사용자 생년월일로 나이 계산
+    if not user or not user.birthday:
+        raise HTTPException(status_code=400, detail="생년월일 정보가 없습니다. 마이페이지에서 생년월일을 등록해주세요.")
+    try:
+        # YYYY-MM-DD 또는 YYYY-MM-DD HH:MM:SS 등 다양한 포맷 대응
+        birth = user.birthday[:10]
+        birth_date = datetime.strptime(birth, "%Y-%m-%d").date()
+    except Exception:
+        raise HTTPException(status_code=400, detail="생년월일 형식이 올바르지 않습니다. (예: 1965-05-10)")
+
+    today = datetime.today().date()
+    age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+
+    # 2. 나이대 구간 자동 매핑 (10살 단위)
+    age_start = (age // 10) * 10
+    age_end = age_start + 10
+
+    # 3. 지원자-유저 조인, 나이대 필터, 지원자 수 집계
+    from sqlalchemy import cast, Date, func, desc
+    from app.models.job_applications import JobApplication
+
+    # User.birthday는 문자열이므로 날짜로 변환
+    age_expr = func.floor(
+        (func.current_date() - cast(User.birthday, Date)) / 365.25
+    )
+
+    applications_count_sq = (
+        select(
+            JobApplication.job_posting_id,
+            func.count().label('app_count')
+        )
+        .join(User, User.id == JobApplication.user_id)
+        .where(
+            age_expr >= age_start,
+            age_expr < age_end
+        )
+        .group_by(JobApplication.job_posting_id)
+        .subquery()
+    )
+
+    list_query = (
+        select(JobPosting)
+        .join(applications_count_sq, JobPosting.id == applications_count_sq.c.job_posting_id)
+        .order_by(desc(applications_count_sq.c.app_count), desc(JobPosting.created_at))
+        .limit(limit)
+    )
+
+    result = await session.execute(list_query)
+    postings = list(result.scalars().all())
+
+    await _attach_favorite_status(session, postings, user.id)
     total_count = len(postings)
     return postings, total_count

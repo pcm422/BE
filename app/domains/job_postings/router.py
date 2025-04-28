@@ -190,6 +190,37 @@ async def list_popular_postings(
 
 
 @router.get(
+    "/popular-by-my-age",
+    response_model=PaginatedJobPostingResponse,
+    summary="내 연령대 인기 채용공고 목록 조회",
+    description="로그인한 사용자의 나이대(40~50, 50~60, 60~70)에서 인기 있는 공고를 조회합니다.",
+)
+async def list_popular_postings_by_my_age(
+    limit: int = Query(10, ge=1, le=100, description="가져올 레코드 수"),
+    session: AsyncSession = Depends(get_db_session),
+    current_user: Optional[User] = Depends(get_current_user_optional)
+) -> PaginatedJobPostingResponse:
+    """
+    내 연령대 인기 채용공고 목록 조회 API 엔드포인트
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    postings, total_count = await service.get_popular_job_postings_for_user_age_group(
+        session=session,
+        user=current_user,
+        limit=limit
+    )
+
+    return PaginatedJobPostingResponse(
+        items=postings,
+        total=total_count,
+        skip=0,
+        limit=limit,
+    )
+
+
+@router.get(
     "/{job_posting_id}",
     response_model=JobPostingResponse,
     summary="채용공고 상세 조회",

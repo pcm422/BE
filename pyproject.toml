@@ -42,6 +42,7 @@ black = "^25.1.0"
 pytest-asyncio = "^0.26.0"
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 minversion = "8.0"             # pytest 최소 버전 지정
 addopts = "-ra -q"             # 더 깔끔한 테스트 결과 출력
 testpaths = ["tests"]          # 기본 테스트 폴더 지정
