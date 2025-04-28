@@ -1191,7 +1191,7 @@ version = "0.26.0"
 description = "Pytest support for asyncio"
 optional = false
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "pytest_asyncio-0.26.0-py3-none-any.whl", hash = "sha256:7b51ed894f4fbea1340262bdae5135797ebbe21d8638978e35d31c6d19f72fb0"},
     {file = "pytest_asyncio-0.26.0.tar.gz", hash = "sha256:c4df2a697648241ff39e7f0e4a73050b03f123f760673956cf0d72a4990e312f"},
@@ -1829,4 +1829,4 @@ email = ["email-validator"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "998faeea258038d7fe77bfd14b9c0630af9872e94f2b2b221a5e400ff209fd9c"
+content-hash = "9607dfe67989578fd1aabc7f1ea69c010a8e78d3c840af2cde6792b33c7eb905"
