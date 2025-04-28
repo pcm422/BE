@@ -46,7 +46,6 @@ asyncio_mode = "auto"
 minversion = "8.0"             # pytest 최소 버전 지정
 addopts = "-ra -q"             # 더 깔끔한 테스트 결과 출력
 testpaths = ["tests"]          # 기본 테스트 폴더 지정
-asyncio_mode = "auto"          # asyncio 모드 자동
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 
