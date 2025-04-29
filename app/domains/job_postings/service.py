@@ -322,7 +322,7 @@ async def get_popular_job_postings_for_user_age_group(
     limit: int = 10
 ) -> tuple[list[JobPosting], int]:
     """
-    로그인한 사용자의 나이대(30~40, 40~50, 50~60, 60~70, 70~80)에 따라 해당 연령대에서 지원이 많은 인기 공고를 집계
+    로그인한 사용자의 나이대(40~50, 50~60, 60~70, 70~80)에 따라 해당 연령대에서 지원이 많은 인기 공고를 집계
     """
     # 1. 사용자 생년월일로 나이 계산
     if not user or not user.birthday:
@@ -340,10 +340,6 @@ async def get_popular_job_postings_for_user_age_group(
     # 2. 나이대 구간 자동 매핑 (10살 단위)
     age_start = (age // 10) * 10
     age_end = age_start + 10
-
-    # 3. 지원자-유저 조인, 나이대 필터, 지원자 수 집계
-    from sqlalchemy import cast, Date, func, desc
-    from app.models.job_applications import JobApplication
 
     # User.birthday는 문자열이므로 날짜로 변환
     age_expr = func.floor(
