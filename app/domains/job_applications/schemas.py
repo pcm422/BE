@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.job_applications import ApplicationStatusEnum
 
@@ -34,5 +34,4 @@ class JobApplicationRead(BaseModel):
     created_at: datetime             # 생성 시각
     updated_at: datetime             # 수정 시각
 
-    class Config:
-        from_attributes = True              # ORM 객체를 Pydantic 모델로 읽어올 때 필요
+    model_config = ConfigDict(from_attributes=True)    # ORM 객체를 Pydantic 모델로 읽어올 때 필요
