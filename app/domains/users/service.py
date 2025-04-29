@@ -324,7 +324,10 @@ async def verify_user_reset_password(db: AsyncSession, data: PasswordResetverify
     return {"status": "success", "data": {"user_id": user.id}}
 
 # 사용자 인증 후 비밀번호 재설정
-async def reset_password_after_verification(db: AsyncSession, user_id: int, new_password: str) -> dict:
+async def reset_password_after_verification(db: AsyncSession, user_id: int, new_password: str, confirm_password: str) -> dict:
+    # 비밀번호와 비밀번호 확인 값이 일치하는지 검증
+    if new_password != confirm_password:
+        raise HTTPException(status_code=400, detail="비밀번호와 비밀번호 확인이 일치하지 않습니다.")
     # user_id로 사용자 검색
     result = await db.execute(select(User).filter(User.id == user_id))
     user = result.scalar_one_or_none()

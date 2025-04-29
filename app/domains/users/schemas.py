@@ -87,8 +87,9 @@ class PasswordResetVerifyResponse(BaseModel):
 
 # 비밀번호 재설정 요청용 스키마
 class PasswordResetConfirmRequest(BaseModel):
-    user_id: int          # 인증 완료된 사용자 ID
-    new_password: str     # 새 비밀번호
+    user_id: int = Field(..., description="인증 완료된 사용자 ID")  # 인증 완료된 사용자 ID
+    new_password: str = Field(..., description="새 비밀번호")  # 새 비밀번호
+    confirm_password: str = Field(..., description="비밀번호 재확인")  # 비밀번호 재확인
 
 # 비밀번호 재설정 성공 응답 스키마
 class PasswordResetConfirmResponse(BaseModel):

@@ -199,13 +199,19 @@ async def password_reset_verify(
 # 비밀번호 재설정 API
 @router.post("/user/password/reset", tags=["사용자"], response_model=PasswordResetConfirmResponse)
 async def password_reset_confirm(
-    payload: PasswordResetConfirmRequest,  # 비밀번호 재설정 요청 데이터
-    db: AsyncSession = Depends(get_db_session)  # DB 세션 주입
+    payload: PasswordResetConfirmRequest,
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
-    인증된 user_id와 새 비밀번호를 통해 비밀번호를 재설정합니다.
+    비밀번호 재설정 API
+    user_id, new_password, confirm_password를 받아 비밀번호를 최종 변경합니다.
     """
-    return await reset_password_after_verification(db, payload.user_id, payload.new_password)
+    return await reset_password_after_verification(
+        db=db,
+        user_id=payload.user_id,
+        new_password=payload.new_password,
+        confirm_password=payload.confirm_password
+    )
 
 @router.post("/user/find_email", tags=["사용자"])
 async def find_email(payload: FindEmailRequest,db=Depends(get_db_session)):
