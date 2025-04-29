@@ -84,9 +84,18 @@ class FindCompanyUserEmail(BaseModel):
     ceo_name: str
 
 
-### 비밀번호 재설정 요청
-class ResetCompanyUserPassword(FindCompanyUserEmail):
+### 비밀번호 재설정
+class PasswordResetVerifyRequest(BaseModel):
+    business_reg_number: str
+    opening_date: str
+    ceo_name: str
     email: EmailStr
+
+class PasswordResetVerifyResponse(BaseModel):
+    reset_token: str
+
+class PasswordResetRequest(BaseModel):
+    reset_token: str
     new_password: constr(min_length=8)
     confirm_password: constr(min_length=8)
 

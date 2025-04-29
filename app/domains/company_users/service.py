@@ -2,7 +2,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-
+from datetime import datetime, timedelta
+from app.core.config import ALGORITHM,SECRET_KEY
 from app.core.utils import create_access_token
 from app.domains.company_users.schemas import (
     CompanyTokenRefreshRequest,
@@ -11,7 +12,7 @@ from app.domains.company_users.schemas import (
     CompanyUserUpdateRequest,
     FindCompanyUserEmail,
     JobPostingsSummary,
-    ResetCompanyUserPassword,
+    PasswordResetVerifyRequest,
 )
 from app.domains.company_users.utiles import (
     check_password_match,
@@ -20,7 +21,7 @@ from app.domains.company_users.utiles import (
     verify_password,
 )
 from app.models import CompanyInfo, CompanyUser
-
+import jwt
 
 # 사업자 등록번호 중복 확인
 async def check_dupl_business_number(db: AsyncSession, business_reg_number: str):
@@ -244,38 +245,73 @@ async def find_company_user_email(db: AsyncSession, payload: FindCompanyUserEmai
     return {"company_name": user.company.company_name, "email": user.email}
 
 
-# 기업회원 비밀번호 재설정
-async def reset_company_user_password(
-    db: AsyncSession, payload: ResetCompanyUserPassword
-):
-    result = await db.execute(
-        select(CompanyUser)
-        .join(CompanyInfo)
-        .where(
-            CompanyInfo.ceo_name == payload.ceo_name,
-            CompanyInfo.opening_date == payload.opening_date,
-            CompanyInfo.business_reg_number == payload.business_reg_number,
-            CompanyUser.email == payload.email,
-            CompanyUser.company_id == CompanyInfo.id,
-        )
+# 기업회원 비밀번호 재설정- 사용자 찾고 짧은 jwt 발급
+async def generate_password_reset_token(
+    db: AsyncSession,
+    payload: PasswordResetVerifyRequest
+) -> str:
+    # 사업자번호·개업일·대표자·이메일이 일치하는지 확인
+    q = select(CompanyUser).join(CompanyInfo).where(
+        CompanyInfo.business_reg_number == payload.business_reg_number,
+        CompanyInfo.opening_date == payload.opening_date,
+        CompanyInfo.ceo_name == payload.ceo_name,
+        CompanyUser.email == str(payload.email),
+        CompanyUser.company_id == CompanyInfo.id,
     )
+    result = await db.execute(q)
     user = result.scalars().first()
-
     if not user:
         raise HTTPException(
-            status_code=404,
-            detail="해당 회원을 찾을 수 없습니다.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="일치하는 기업 회원을 찾을 수 없습니다.",
         )
 
-    check_password_match(
-        payload.new_password, payload.confirm_password
-    )  # 비밀번호 인증
-    user.password = hash_password(payload.new_password)
+    # 30분 만료의 reset-token 생성
+    expire = datetime.utcnow() + timedelta(minutes=30)
+    to_encode = {"sub": user.email, "scope": "reset", "exp": expire}
 
+    token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return token
+
+# 토큰으로 디코딩 후 비번 재설정
+async def reset_password_with_token(
+        db: AsyncSession,
+        reset_token: str,
+        new_password: str,
+        confirm_password: str,
+):
+    # 1) 토큰 파싱 & 검증
+    try:
+        payload = jwt.decode(reset_token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="재설정 토큰이 만료되었습니다.",
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않은 재설정 토큰입니다.",
+        )
+    if payload.get("scope") != "reset" or "sub" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="재설정 토큰 정보가 올바르지 않습니다.",
+        )
+    # 2)비밀번호 일치 확인
+    check_password_match(new_password, confirm_password)
+    # 3) 사용자 조회 및 비번 업데이트
+    email = payload["sub"]
+    result = await db.execute(select(CompanyUser).filter_by(email=email))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="해당 이메일의 사용자를 찾을 수 없습니다.",
+        )
+    user.password = hash_password(new_password)
     await db.commit()
-    await db.refresh(user)
 
-    return user.email
 
 
 # 리프레쉬 토큰으로 엑세스토큰 재발급
