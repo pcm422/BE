@@ -1,4 +1,4 @@
-# tests/compnay_users/test_users_router.py
+
 
 import pytest
 from fastapi import FastAPI, HTTPException
@@ -9,7 +9,6 @@ from app.core.utils import get_current_company_user
 from app.domains.company_users.router import router as users_router
 from app.domains.company_users.schemas import (
     PasswordResetVerifyRequest,
-    PasswordResetRequest,
 )
 
 
@@ -58,8 +57,11 @@ def client(app):
 
 def test_register_companyuser(monkeypatch, client):
     """POST /company/register"""
+
     async def fake_register(db, payload):
-        class CU: pass
+        class CU:
+            pass
+
         u = CU()
         u.id = 42
         u.email = payload.email
@@ -92,8 +94,11 @@ def test_register_companyuser(monkeypatch, client):
 
 def test_login_companyuser(monkeypatch, client):
     """POST /company/login"""
+
     async def fake_login(db, email, password):
-        class U: pass
+        class U:
+            pass
+
         u = U()
         u.id = 5
         u.email = email
@@ -136,6 +141,7 @@ def test_logout_companyuser(client):
 
 def test_get_me(monkeypatch, client):
     """GET /company/me"""
+
     async def fake_mypage(db, user):
         return {
             "company_user_id": user.id,
@@ -153,6 +159,7 @@ def test_get_me(monkeypatch, client):
             "company_image": user.company.company_image,
             "job_postings": user.company.job_postings,
         }
+
     monkeypatch.setattr(
         "app.domains.company_users.router.get_company_user_mypage",
         fake_mypage,
@@ -164,6 +171,7 @@ def test_get_me(monkeypatch, client):
 
 def test_patch_me(monkeypatch, client):
     """PATCH /company/me"""
+
     async def fake_update(db, payload, current_user):
         return {
             "company_user_id": current_user.id,
@@ -176,6 +184,7 @@ def test_patch_me(monkeypatch, client):
             "address": current_user.company.address,
             "company_image": current_user.company.company_image,
         }
+
     monkeypatch.setattr(
         "app.domains.company_users.router.update_company_user",
         fake_update,
@@ -187,8 +196,10 @@ def test_patch_me(monkeypatch, client):
 
 def test_delete_me(monkeypatch, client):
     """DELETE /company/me"""
+
     async def fake_delete(db, current_user):
         return {"company_user_id": current_user.id}
+
     monkeypatch.setattr(
         "app.domains.company_users.router.delete_company_user",
         fake_delete,
@@ -200,8 +211,10 @@ def test_delete_me(monkeypatch, client):
 
 def test_find_email(monkeypatch, client):
     """POST /company/find-email"""
+
     async def fake_find(db, payload):
         return {"email": "found@co.com", "company_name": "FCo"}
+
     monkeypatch.setattr(
         "app.domains.company_users.router.find_company_user_email",
         fake_find,
@@ -218,8 +231,10 @@ def test_find_email(monkeypatch, client):
 
 def test_refresh_token(monkeypatch, client):
     """POST /company/auth/refresh-token"""
+
     async def fake_refresh(db, token_data):
         return {"access_token": "NEWAT"}
+
     monkeypatch.setattr(
         "app.domains.company_users.router.refresh_company_user_access_token",
         fake_refresh,
@@ -228,14 +243,18 @@ def test_refresh_token(monkeypatch, client):
     assert r.status_code == 200
     assert r.json()["data"]["access_token"] == "NEWAT"
 
+
 # ==== 비밀번호 재설정 라우터 테스트 추가 ====
+
 
 def test_verify_reset_password_success(monkeypatch, client):
     """POST /company/reset-password/verify 성공"""
     sample_token = "tok"
+
     async def fake_gen(db, payload):
         assert isinstance(payload, PasswordResetVerifyRequest)
         return sample_token
+
     monkeypatch.setattr(
         "app.domains.company_users.router.generate_password_reset_token",
         fake_gen,
@@ -255,53 +274,67 @@ def test_verify_reset_password_success(monkeypatch, client):
 
 def test_verify_reset_password_fail(monkeypatch, client):
     """POST /company/reset-password/verify 검증 실패 → 404"""
+
     async def fake_err(db, payload):
         raise HTTPException(status_code=404, detail="fail")
+
     monkeypatch.setattr(
         "app.domains.company_users.router.generate_password_reset_token",
         fake_err,
     )
-    r = client.post("/company/reset-password/verify", json={
-        "business_reg_number": "x",
-        "opening_date": "y",
-        "ceo_name": "z",
-        "email": "u@u.com",
-    })
+    r = client.post(
+        "/company/reset-password/verify",
+        json={
+            "business_reg_number": "x",
+            "opening_date": "y",
+            "ceo_name": "z",
+            "email": "u@u.com",
+        },
+    )
     assert r.status_code == 404
     assert r.json()["detail"] == "fail"
 
 
 def test_reset_password_success(monkeypatch, client):
     """POST /company/reset-password 성공"""
+
     async def fake_reset(db, token, new, confirm):
         return None
+
     monkeypatch.setattr(
         "app.domains.company_users.router.reset_password_with_token",
         fake_reset,
     )
-    r = client.post("/company/reset-password", json={
-        "reset_token": "tok",
-        "new_password": "abcdefgh",
-        "confirm_password": "abcdefgh",
-    })
+    r = client.post(
+        "/company/reset-password",
+        json={
+            "reset_token": "tok",
+            "new_password": "abcdefgh",
+            "confirm_password": "abcdefgh",
+        },
+    )
     assert r.status_code == 200
     assert r.json()["status"] == "success"
 
 
 @pytest.mark.parametrize("code", [400, 401, 404])
-
 def test_reset_password_error(monkeypatch, client, code):
     """POST /company/reset-password 에러 전파"""
+
     async def fake_err(db, token, new, confirm):
         raise HTTPException(status_code=code, detail="err")
+
     monkeypatch.setattr(
         "app.domains.company_users.router.reset_password_with_token",
         fake_err,
     )
-    r = client.post("/company/reset-password", json={
-        "reset_token": "tok",
-        "new_password": "abcdefgh",
-        "confirm_password": "abcdefgh",
-    })
+    r = client.post(
+        "/company/reset-password",
+        json={
+            "reset_token": "tok",
+            "new_password": "abcdefgh",
+            "confirm_password": "abcdefgh",
+        },
+    )
     assert r.status_code == code
     assert r.json()["detail"] == "err"

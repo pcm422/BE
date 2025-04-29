@@ -12,7 +12,7 @@ class CompanyUserBase(BaseModel):
     manager_email: EmailStr  # 담당자 이메일
     company_name: constr(min_length=1)  # 기업명
     ceo_name: constr(min_length=1)  # 대표자 성함
-    opening_date: str # 개업일자
+    opening_date: str  # 개업일자
     business_reg_number: str
     company_intro: constr(min_length=10)  # 기업 소개
 
@@ -42,6 +42,7 @@ class CompanyUserBase(BaseModel):
         if len(v) != 10:
             raise ValueError("사업자등록번호는 정확히 10자리여야 합니다.")
         return v
+
 
 ### 패스워드 확인용 믹스인
 class PasswordMixin(BaseModel):
@@ -91,8 +92,10 @@ class PasswordResetVerifyRequest(BaseModel):
     ceo_name: str
     email: EmailStr
 
+
 class PasswordResetVerifyResponse(BaseModel):
     reset_token: str
+
 
 class PasswordResetRequest(BaseModel):
     reset_token: str

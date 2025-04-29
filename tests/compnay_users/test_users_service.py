@@ -1,26 +1,28 @@
-import bcrypt
-import pytest
-import jwt
 import time
 from datetime import datetime, timedelta
+
+import bcrypt
+import jwt
+import pytest
 from fastapi import HTTPException, status
 
+import app.core.config as cfg
+import app.domains.company_users.service as svc
 from app.domains.company_users.schemas import (
     CompanyTokenRefreshRequest,
     FindCompanyUserEmail,
     PasswordResetVerifyRequest,
 )
+from app.domains.company_users.service import check_dupl_business_number as dup_brn
+from app.domains.company_users.service import check_dupl_email as dup_email
 from app.domains.company_users.service import (
-    check_dupl_business_number as dup_brn,
-    check_dupl_email as dup_email,
-    login_company_user,
     find_company_user_email,
-    refresh_company_user_access_token,
     generate_password_reset_token,
+    login_company_user,
+    refresh_company_user_access_token,
     reset_password_with_token,
 )
-import app.core.config as cfg
-import app.domains.company_users.service as svc
+
 
 # --- 더미 ORM 유저 & 결과 & 세션 정의 ---
 class DummyUser:
@@ -32,36 +34,49 @@ class DummyUser:
             ).decode()
         self.id = 1
 
+
 class DummyResult:
     def __init__(self, v):
         self._v = v
-    def scalars(self): return self
-    def first(self): return self._v
-    def scalar_one_or_none(self): return self._v
+
+    def scalars(self):
+        return self
+
+    def first(self):
+        return self._v
+
+    def scalar_one_or_none(self):
+        return self._v
+
 
 class DummySession:
     def __init__(self, val):
         self.val = val
+
     async def execute(self, query):
         return DummyResult(self.val)
+
     async def commit(self):
         self.committed = True
+
     async def refresh(self, obj):
         pass
+
     async def delete(self, obj):
         pass
+
 
 # --- JWT 설정 픽스처 (서비스 모듈까지 덮어쓰기) ---
 @pytest.fixture(autouse=True)
 def jwt_settings(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "testsecret")
-    monkeypatch.setenv("ALGORITHM",  "HS256")
+    monkeypatch.setenv("ALGORITHM", "HS256")
     # core.config 덮어쓰기
     cfg.SECRET_KEY = "testsecret"
-    cfg.ALGORITHM  = "HS256"
+    cfg.ALGORITHM = "HS256"
     # service 모듈 상수도 덮어쓰기
     svc.SECRET_KEY = "testsecret"
-    svc.ALGORITHM  = "HS256"
+    svc.ALGORITHM = "HS256"
 
 
 # ==== 중복 검사 테스트 ====
@@ -72,10 +87,12 @@ async def test_check_dupl_email_conflict():
         await dup_email(db, "a@b.com")
     assert exc.value.status_code == status.HTTP_409_CONFLICT
 
+
 @pytest.mark.asyncio
 async def test_check_dupl_email_ok():
     db = DummySession(None)
     await dup_email(db, "new@b.com")
+
 
 @pytest.mark.asyncio
 async def test_check_dupl_brn_conflict():
@@ -83,6 +100,7 @@ async def test_check_dupl_brn_conflict():
     with pytest.raises(HTTPException) as exc:
         await dup_brn(db, "1234567890")
     assert exc.value.status_code == status.HTTP_409_CONFLICT
+
 
 @pytest.mark.asyncio
 async def test_check_dupl_brn_ok():
@@ -98,6 +116,7 @@ async def test_login_company_user_not_found():
         await login_company_user(db, "no@one.com", "pwd")
     assert exc.value.status_code == status.HTTP_404_NOT_FOUND
 
+
 @pytest.mark.asyncio
 async def test_login_company_user_bad_password():
     dummy = DummyUser("u@u.com", raw_password="rightpw")
@@ -105,6 +124,7 @@ async def test_login_company_user_bad_password():
     with pytest.raises(HTTPException) as exc:
         await login_company_user(db, "u@u.com", "wrongpw")
     assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
+
 
 @pytest.mark.asyncio
 async def test_login_company_user_success():
@@ -140,14 +160,17 @@ async def test_refresh_company_user_access_token_not_found(monkeypatch):
         )
     assert exc.value.status_code == status.HTTP_404_NOT_FOUND
 
+
 @pytest.mark.asyncio
 async def test_refresh_company_user_access_token_success(monkeypatch):
     monkeypatch.setattr(
         "app.domains.company_users.service.decode_refresh_token",
         lambda t: {"sub": "ok@user.com"},
     )
+
     async def fake_create_access_token(data):
         return "NEWAT"
+
     monkeypatch.setattr(
         "app.domains.company_users.service.create_access_token",
         fake_create_access_token,
@@ -169,13 +192,14 @@ async def test_generate_password_reset_token_success():
         business_reg_number="123",
         opening_date="20200101",
         ceo_name="CEO",
-        email="a@b.com"
+        email="a@b.com",
     )
     token = await generate_password_reset_token(db, payload)
     data = jwt.decode(token, "testsecret", algorithms=["HS256"])
     assert data["sub"] == "a@b.com"
     assert data["scope"] == "reset"
     assert data["exp"] > time.time()
+
 
 @pytest.mark.asyncio
 async def test_generate_password_reset_token_not_found():
@@ -184,7 +208,7 @@ async def test_generate_password_reset_token_not_found():
         business_reg_number="xxx",
         opening_date="19000101",
         ceo_name="X",
-        email="no@one.com"
+        email="no@one.com",
     )
     with pytest.raises(HTTPException) as exc:
         await generate_password_reset_token(db, payload)
@@ -199,10 +223,12 @@ async def test_reset_password_with_token_success():
     now = datetime.utcnow()
     token = jwt.encode(
         {"sub": user.email, "scope": "reset", "exp": now + timedelta(minutes=1)},
-        "testsecret", algorithm="HS256"
+        "testsecret",
+        algorithm="HS256",
     )
     await reset_password_with_token(db, token, "newpass12", "newpass12")
     assert getattr(db, "committed", False) is True
+
 
 @pytest.mark.asyncio
 async def test_reset_password_with_token_expired():
@@ -211,11 +237,13 @@ async def test_reset_password_with_token_expired():
     past = datetime.utcnow() - timedelta(seconds=1)
     token = jwt.encode(
         {"sub": user.email, "scope": "reset", "exp": past},
-        "testsecret", algorithm="HS256"
+        "testsecret",
+        algorithm="HS256",
     )
     with pytest.raises(HTTPException) as exc:
         await reset_password_with_token(db, token, "abcdefgh", "abcdefgh")
     assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
+
 
 @pytest.mark.asyncio
 async def test_reset_password_with_token_invalid():
@@ -224,36 +252,54 @@ async def test_reset_password_with_token_invalid():
         await reset_password_with_token(db, "not.a.token", "abcdefgh", "abcdefgh")
     assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
 
+
 @pytest.mark.asyncio
 async def test_reset_password_with_token_scope_mismatch():
     user = DummyUser("u@u.com")
     db = DummySession(user)
     token = jwt.encode(
-        {"sub": user.email, "scope": "other", "exp": datetime.utcnow() + timedelta(minutes=1)},
-        "testsecret", algorithm="HS256"
+        {
+            "sub": user.email,
+            "scope": "other",
+            "exp": datetime.utcnow() + timedelta(minutes=1),
+        },
+        "testsecret",
+        algorithm="HS256",
     )
     with pytest.raises(HTTPException) as exc:
         await reset_password_with_token(db, token, "abcdefgh", "abcdefgh")
     assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
 
+
 @pytest.mark.asyncio
 async def test_reset_password_with_token_user_not_found():
     token = jwt.encode(
-        {"sub": "nouser@co.com", "scope": "reset", "exp": datetime.utcnow() + timedelta(minutes=1)},
-        "testsecret", algorithm="HS256"
+        {
+            "sub": "nouser@co.com",
+            "scope": "reset",
+            "exp": datetime.utcnow() + timedelta(minutes=1),
+        },
+        "testsecret",
+        algorithm="HS256",
     )
     db = DummySession(None)
     with pytest.raises(HTTPException) as exc:
         await reset_password_with_token(db, token, "abcdefgh", "abcdefgh")
     assert exc.value.status_code == status.HTTP_404_NOT_FOUND
 
+
 @pytest.mark.asyncio
 async def test_reset_password_with_token_mismatch_passwords():
     user = DummyUser("u@u.com")
     db = DummySession(user)
     token = jwt.encode(
-        {"sub": user.email, "scope": "reset", "exp": datetime.utcnow() + timedelta(minutes=1)},
-        "testsecret", algorithm="HS256"
+        {
+            "sub": user.email,
+            "scope": "reset",
+            "exp": datetime.utcnow() + timedelta(minutes=1),
+        },
+        "testsecret",
+        algorithm="HS256",
     )
     with pytest.raises(HTTPException) as exc:
         await reset_password_with_token(db, token, "abc12345", "xyz98765")
