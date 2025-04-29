@@ -6,8 +6,9 @@ from sqlalchemy.orm import selectinload
 from app.core.db import get_db_session
 from app.models import User, UserInterest
 
-from .schemas import (PasswordReset, TokenRefreshRequest, UserLogin,
-                      UserProfileUpdate, UserRegister, FindEmailRequest)
+from .schemas import (TokenRefreshRequest, UserLogin,
+                      UserProfileUpdate, UserRegister, FindEmailRequest, PasswordResetConfirmResponse,
+                      PasswordResetverify, PasswordResetVerifyResponse, PasswordResetConfirmRequest)
 from .service import (
     ALGORITHM,
     SECRET_KEY,
@@ -17,9 +18,8 @@ from .service import (
     recommend_jobs,
     refresh_access_token,
     register_user,
-    reset_password,
     update_user,
-    check_email, find_my_email_user_info,
+    check_email, find_my_email_user_info, reset_password_after_verification, verify_user_reset_password,
 )
 
 router = APIRouter()
@@ -184,15 +184,34 @@ async def get_user(
     return result  # 결과 반환
 
 
-# 비밀번호 재설정
-@router.post("/user/reset-password", tags=["사용자"])
-async def reset_pw(data: PasswordReset, db=Depends(get_db_session)):
+# 비밀번호 재설정 시 사용자 인증 API
+@router.post("/user/password/verify", tags=["사용자"], response_model=PasswordResetVerifyResponse)
+async def password_reset_verify(
+    payload: PasswordResetverify,  # 인증 요청 데이터
+    db: AsyncSession = Depends(get_db_session)  # DB 세션 주입
+):
     """
-    사용자의 비밀번호를 재설정하는 엔드포인트입니다.
-    비밀번호 재설정 정보를 받아 비즈니스 로직을 호출합니다.
+    비밀번호 재설정을 위한 사용자 인증
+    이메일, 이름, 전화번호, 생년월일을 검증하여 user_id를 반환합니다.
     """
-    result = await reset_password(db, data)  # service의 reset_password 호출
-    return result  # 결과 반환
+    return await verify_user_reset_password(db, payload)
+
+# 비밀번호 재설정 API
+@router.post("/user/password/reset", tags=["사용자"], response_model=PasswordResetConfirmResponse)
+async def password_reset_confirm(
+    payload: PasswordResetConfirmRequest,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    비밀번호 재설정 API
+    user_id, new_password, confirm_password를 받아 비밀번호를 최종 변경합니다.
+    """
+    return await reset_password_after_verification(
+        db=db,
+        user_id=payload.user_id,
+        new_password=payload.new_password,
+        confirm_password=payload.confirm_password
+    )
 
 @router.post("/user/find_email", tags=["사용자"])
 async def find_email(payload: FindEmailRequest,db=Depends(get_db_session)):

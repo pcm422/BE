@@ -8,8 +8,8 @@ from sqlalchemy.orm import selectinload
 
 from app.models import Interest, User, UserInterest, JobPosting
 
-from .schemas import (PasswordReset, TokenRefreshRequest, UserLogin,
-                      UserProfileUpdate, UserRegister)
+from .schemas import (TokenRefreshRequest, UserLogin,
+                      UserProfileUpdate, UserRegister, PasswordResetverify)
 from ..company_users.utiles import verify_password
 from ..job_postings.service import _attach_favorite_status
 from ...core.config import SECRET_KEY, ALGORITHM
@@ -296,7 +296,6 @@ async def get_user_details(db: AsyncSession, user_id: int, current_user: User) -
         "gender": user.gender,
         "birthday": user.birthday,
         "phone_number": user.phone_number,
-        # 관심분야의 이름 리스트
         "interests": [ui.interest.name for ui in user.user_interests],
         "signup_purpose": user.signup_purpose,
         "referral_source": user.referral_source,
@@ -306,19 +305,39 @@ async def get_user_details(db: AsyncSession, user_id: int, current_user: User) -
     return {"status": "success", "data": response_data}
 
 
-# 비밀번호 재설정 기능
-async def reset_password(db: AsyncSession, data: PasswordReset) -> dict:
-    # 이메일과 이름으로 사용자 검색
+# 비밀번호 재설정 전 사용자 인증
+async def verify_user_reset_password(db: AsyncSession, data: PasswordResetverify) -> dict:
+    # 이메일, 이름, 전화번호, 생년월일로 사용자 검색
     result = await db.execute(
-        select(User).filter(User.email == data.email, User.name == data.name)
+        select(User).filter(
+            and_(
+                User.email == data.email,
+                User.name == data.name,
+                User.phone_number == data.phone_number,
+                User.birthday == data.birthday
+            )
+        )
     )  # 쿼리 실행
     user = result.scalar_one_or_none()  # 사용자 객체 반환
     if not user:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    # 새로운 비밀번호 해시 처리 후 업데이트
-    user.password = hash_password(data.new_password)  # 176
+        raise HTTPException(status_code=404, detail="입력한 정보와 일치하는 사용자가 없습니다.")
+    return {"status": "success", "data": {"user_id": user.id}}
+
+# 사용자 인증 후 비밀번호 재설정
+async def reset_password_after_verification(db: AsyncSession, user_id: int, new_password: str, confirm_password: str) -> dict:
+    # 비밀번호와 비밀번호 확인 값이 일치하는지 검증
+    if new_password != confirm_password:
+        raise HTTPException(status_code=400, detail="비밀번호와 비밀번호 확인이 일치하지 않습니다.")
+    # user_id로 사용자 검색
+    result = await db.execute(select(User).filter(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="유저가 조회되지 않습니다.")
+
+    # 비밀번호 해시 후 저장
+    user.password = hash_password(new_password)
     await db.commit()  # 변경사항 커밋
-    return {"status": "success", "message": "비밀번호가 재설정되었습니다."}  # 결과 반환
+    return {"status": "success", "message": "비밀번호가 재설정되었습니다."}
 
 
 # 관심분야 기반 추천 채용공고 제공 기능
