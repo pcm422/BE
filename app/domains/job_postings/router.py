@@ -289,8 +289,16 @@ async def delete_posting(
     await check_posting_permission(posting, current_user, action_type="삭제")
 
     # 3. 서비스 계층 호출 (삭제 로직 수행)
-    # 서비스 함수는 내부에서 DB 에러 시 HTTPException 발생시킴
-    await service.delete_job_posting(session=session, job_posting_id=job_posting_id)
+    # 서비스 함수는 성공 시 True, 실패 시 False 반환
+    success = await service.delete_job_posting(session=session, job_posting_id=job_posting_id)
 
-    # 4. 서비스 호출이 성공적으로 완료되면 (예외 발생X), None 반환하여 204 응답 처리
+    # 4. 서비스 호출 결과 확인
+    if not success:
+        # 서비스에서 False 반환 시 (삭제 실패 또는 DB 오류)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="채용 공고 삭제 중 오류가 발생했습니다."
+        )
+
+    # 5. 성공 시 None 반환하여 204 응답 처리
     return None
