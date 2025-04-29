@@ -1,7 +1,9 @@
 import pytest
 from fastapi import HTTPException, status
-from app.domains.company_info.service import get_company_info
+
 from app.domains.company_info.schemas import PublicCompanyInfo
+from app.domains.company_info.service import get_company_info
+
 
 # 더미 ORM 객체
 class DummyCompany:
@@ -19,16 +21,27 @@ class DummyCompany:
         self.company_image = None
         self.job_postings = []  # 빈 리스트
 
+
 # 더미 결과 객체
 class DummyResult:
-    def __init__(self, v): self._v = v
-    def scalars(self): return self
-    def first(self): return self._v
+    def __init__(self, v):
+        self._v = v
+
+    def scalars(self):
+        return self
+
+    def first(self):
+        return self._v
+
 
 # 더미 세션
 class DummySession:
-    def __init__(self, result): self._result = result
-    async def execute(self, query): return DummyResult(self._result)
+    def __init__(self, result):
+        self._result = result
+
+    async def execute(self, query):
+        return DummyResult(self._result)
+
 
 @pytest.mark.asyncio
 async def test_get_company_info_success():
@@ -39,6 +52,7 @@ async def test_get_company_info_success():
     assert isinstance(info, PublicCompanyInfo)
     assert info.company_id == 42
     assert info.company_name == "test company"
+
 
 @pytest.mark.asyncio
 async def test_get_company_info_not_found():
