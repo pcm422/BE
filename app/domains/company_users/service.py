@@ -1,9 +1,12 @@
+from datetime import datetime, timedelta
+
+import jwt
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from datetime import datetime, timedelta
-from app.core.config import ALGORITHM,SECRET_KEY
+
+from app.core.config import ALGORITHM, SECRET_KEY
 from app.core.utils import create_access_token
 from app.domains.company_users.schemas import (
     CompanyTokenRefreshRequest,
@@ -21,7 +24,7 @@ from app.domains.company_users.utiles import (
     verify_password,
 )
 from app.models import CompanyInfo, CompanyUser
-import jwt
+
 
 # 사업자 등록번호 중복 확인
 async def check_dupl_business_number(db: AsyncSession, business_reg_number: str):
@@ -112,8 +115,8 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
     # 유효값 검증
     if not company_user:
         raise HTTPException(
-            status_code=404,
-            detail="이메일 또는 비밀번호가 일치하지 않습니다.")
+            status_code=404, detail="이메일 또는 비밀번호가 일치하지 않습니다."
+        )
     if not verify_password(password, company_user.password):
         raise HTTPException(
             status_code=401,
@@ -247,16 +250,19 @@ async def find_company_user_email(db: AsyncSession, payload: FindCompanyUserEmai
 
 # 기업회원 비밀번호 재설정- 사용자 찾고 짧은 jwt 발급
 async def generate_password_reset_token(
-    db: AsyncSession,
-    payload: PasswordResetVerifyRequest
+    db: AsyncSession, payload: PasswordResetVerifyRequest
 ) -> str:
     # 사업자번호·개업일·대표자·이메일이 일치하는지 확인
-    q = select(CompanyUser).join(CompanyInfo).where(
-        CompanyInfo.business_reg_number == payload.business_reg_number,
-        CompanyInfo.opening_date == payload.opening_date,
-        CompanyInfo.ceo_name == payload.ceo_name,
-        CompanyUser.email == str(payload.email),
-        CompanyUser.company_id == CompanyInfo.id,
+    q = (
+        select(CompanyUser)
+        .join(CompanyInfo)
+        .where(
+            CompanyInfo.business_reg_number == payload.business_reg_number,
+            CompanyInfo.opening_date == payload.opening_date,
+            CompanyInfo.ceo_name == payload.ceo_name,
+            CompanyUser.email == str(payload.email),
+            CompanyUser.company_id == CompanyInfo.id,
+        )
     )
     result = await db.execute(q)
     user = result.scalars().first()
@@ -273,12 +279,13 @@ async def generate_password_reset_token(
     token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return token
 
+
 # 토큰으로 디코딩 후 비번 재설정
 async def reset_password_with_token(
-        db: AsyncSession,
-        reset_token: str,
-        new_password: str,
-        confirm_password: str,
+    db: AsyncSession,
+    reset_token: str,
+    new_password: str,
+    confirm_password: str,
 ):
     # 1) 토큰 파싱 & 검증
     try:
@@ -311,7 +318,6 @@ async def reset_password_with_token(
         )
     user.password = hash_password(new_password)
     await db.commit()
-
 
 
 # 리프레쉬 토큰으로 엑세스토큰 재발급
