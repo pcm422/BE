@@ -9,6 +9,7 @@ from app.domains.job_postings import service as job_service
 from starlette.datastructures import UploadFile, Headers
 from tests.conftest import TEST_DATABASE_URL
 from app.models.base import Base
+from datetime import date, timedelta
 
 def test_job_posting_service_crud(monkeypatch):
     # joint_test DB에 테이블 생성
@@ -54,7 +55,6 @@ def test_job_posting_service_crud(monkeypatch):
             company_id = company_user.company_id
 
             # 3. 채용공고 생성
-            from datetime import date, timedelta
             posting_data = JobPostingCreate(
                 title="테스트 공고",
                 recruit_period_start=date.today(),
