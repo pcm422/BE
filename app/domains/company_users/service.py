@@ -111,7 +111,7 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
     # 유효값 검증
     if not company_user:
         raise HTTPException(
-            status_code=401,
+            status_code=404,
             detail="이메일 또는 비밀번호가 일치하지 않습니다.")
     if not verify_password(password, company_user.password):
         raise HTTPException(
