@@ -263,7 +263,7 @@ async def generate_password_reset_token(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="회원 검증에 실패했습니다.",
+            detail="일치하는 기업 회원을 찾을 수 없습니다.",
         )
 
     # 30분 만료의 reset-token 생성
