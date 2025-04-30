@@ -1,11 +1,11 @@
 import uuid
 import asyncio
-import io
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from app.domains.company_users.schemas import CompanyUserRegisterRequest
 from app.domains.company_users.service import register_company_user
 from app.domains.job_postings.schemas import JobPostingCreate, JobPostingUpdate
 from app.domains.job_postings import service as job_service
+from app.domains.job_postings.repository import JobPostingRepository
 from starlette.datastructures import UploadFile, Headers
 from tests.conftest import TEST_DATABASE_URL
 from app.models.base import Base
@@ -49,6 +49,9 @@ def test_job_posting_service_crud(monkeypatch):
     )
     async def run():
         async with TestingSessionLocal() as session:
+            # Repository 인스턴스 생성
+            repository = JobPostingRepository(session)
+
             # 1. upload_image_to_ncp mock 처리
             async def fake_upload_image_to_ncp(file, folder):
                 return "https://fake-url.com/test.png"
@@ -109,42 +112,34 @@ def test_job_posting_service_crud(monkeypatch):
                 postings_image="test.png"
             )
 
-            # 임시 이미지 파일 생성
-            image_content = b"test"
-            headers = Headers({"content-type": "image/png"})
-            image_file = UploadFile(
-                filename="test.png",
-                file=io.BytesIO(image_content),
-                headers=headers
-            )
-
+            # 서비스 함수 호출 시 repository 전달 및 키워드 인자 사용
             posting = await job_service.create_job_posting(
-                session, posting_data, author_id, company_id, image_file=image_file
+                job_posting_data=posting_data, author_id=author_id, company_id=company_id, repository=repository
             )
             assert posting.id is not None
             assert posting.title == "테스트 공고"
 
             # 4. 상세 조회
-            found = await job_service.get_job_posting(session, posting.id)
+            found = await job_service.get_job_posting(job_posting_id=posting.id, repository=repository)
             assert found is not None
             assert found.title == "테스트 공고"
 
             # 5. 목록 조회
-            postings, total = await job_service.list_job_postings(session)
+            postings, total = await job_service.list_job_postings(repository=repository)
             assert total >= 1
             assert any(p.id == posting.id for p in postings)
 
             # 6. 수정
             update_data = JobPostingUpdate(title="수정된 공고 제목", salary=65000000)
-            updated = await job_service.update_job_posting(session, posting.id, update_data)
+            updated = await job_service.update_job_posting(job_posting_id=posting.id, data=update_data, repository=repository)
             assert updated.title == "수정된 공고 제목"
             assert updated.salary == 65000000
 
             # 7. 삭제
-            deleted = await job_service.delete_job_posting(session, posting.id)
+            deleted = await job_service.delete_job_posting(job_posting_id=posting.id, repository=repository)
             assert deleted is True
 
             # 8. 삭제 후 상세 조회
-            not_found = await job_service.get_job_posting(session, posting.id)
+            not_found = await job_service.get_job_posting(job_posting_id=posting.id, repository=repository)
             assert not_found is None
     asyncio.run(run())
