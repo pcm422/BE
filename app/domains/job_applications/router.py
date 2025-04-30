@@ -5,10 +5,10 @@ from app.core.db import get_db_session
 from app.domains.users.router import read_current_user
 from app.core.utils import get_current_company_user
 
-from .schemas import (
+from app.domains.job_applications.schemas import (
     ResumeApplyCreate, JobApplicationRead, JobApplicationStatusUpdate
 )
-from .service import (
+from app.domains.job_applications.service import (
     create_application, get_user_applications, get_user_application_detail,
     delete_application, get_company_applications,
     get_company_application_detail, update_application_status
