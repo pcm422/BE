@@ -2,14 +2,17 @@ import io
 import pytest
 import uuid
 from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select
 from app.main import app
 from app.core.db import get_db_session
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from tests.conftest import TEST_DATABASE_URL
 from app.models.base import Base
+from app.models import CompanyUser
+from unittest.mock import AsyncMock
 
 @pytest.mark.asyncio
-async def test_job_posting_crud_flow(async_client):
+async def test_job_posting_crud_flow(async_client, monkeypatch):
     # joint_test DB에 테이블 생성
     engine = create_async_engine(TEST_DATABASE_URL, future=True)
     async with engine.begin() as conn:
@@ -27,6 +30,11 @@ async def test_job_posting_crud_flow(async_client):
         async def override_get_db():
             yield session
         app.dependency_overrides[get_db_session] = override_get_db
+
+        # --- 이메일 발송 모킹 ---
+        mock_send_message = AsyncMock()
+        monkeypatch.setattr("fastapi_mail.FastMail.send_message", mock_send_message)
+        # ----------------------
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as async_client:
@@ -50,12 +58,30 @@ async def test_job_posting_crud_flow(async_client):
                 "company_intro": "테스트 회사 소개입니다."
             }
             resp = await async_client.post("/company/register", json=company_data)
-            assert resp.status_code == 201 or resp.status_code == 200    
+            assert resp.status_code == 201 or resp.status_code == 200
+            # --- 모킹 확인 (선택 사항) ---
+            # mock_send_message.assert_called_once() # 메일 발송 함수가 1번 호출되었는지 확인
+            # --------------------------
+
+            # --- 생성된 사용자 활성화 ---
+            stmt = select(CompanyUser).where(CompanyUser.email == unique_email)
+            result = await session.execute(stmt)
+            user_to_activate = result.scalar_one_or_none()
+            assert user_to_activate is not None
+            user_to_activate.is_active = True
+            session.add(user_to_activate)
+            await session.commit()
+            await session.refresh(user_to_activate)
+            # -------------------------
 
             # 3. 로그인 및 토큰 획득
             login_data = {"email": unique_email, "password": company_data["password"]}
             resp = await async_client.post("/company/login", json=login_data)
-            assert resp.status_code == 200
+            # --- 로그인 상태 코드 확인 ---
+            if resp.status_code != 200:
+                print(f"Login failed! Status: {resp.status_code}, Response: {resp.text}") # 디버깅 로그 추가
+            assert resp.status_code == 200 # 이제 200이어야 함
+            # ---------------------------
             token = resp.json()["data"]["access_token"]
             headers = {"Authorization": f"Bearer {token}"}
 
