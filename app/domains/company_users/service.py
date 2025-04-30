@@ -1,8 +1,9 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.email_utils.mail_service import handle_verification_email
 from app.core.utils import create_access_token
 from app.domains.company_users.schemas import (
     CompanyTokenRefreshRequest,
@@ -65,7 +66,7 @@ async def create_company_info(db: AsyncSession, payload: CompanyUserBase):
 
 # 기업 회원 저장
 async def create_company_user(
-    db: AsyncSession, payload: CompanyUserBase, company_id: int
+    db: AsyncSession, payload: CompanyUserBase, company_id: int, background_tasks: BackgroundTasks
 ) -> CompanyUser:
     company_user = CompanyUser(
         email=str(payload.email),
@@ -75,11 +76,16 @@ async def create_company_user(
     db.add(company_user)
     await db.commit()
     await db.refresh(company_user)
+    await handle_verification_email(
+        background_tasks=background_tasks,
+        user_id=company_user.id,
+        email=company_user.email
+    )
     return company_user
 
 
 # 기업 회원 가입
-async def register_company_user(db: AsyncSession, payload: CompanyUserRegisterRequest):
+async def register_company_user(db: AsyncSession, payload: CompanyUserRegisterRequest, background_tasks: BackgroundTasks):
     # 이메일, 사업자 중복 확인
     await check_dupl_email(db, payload.email)
     await check_dupl_business_number(db, payload.business_reg_number)
@@ -91,7 +97,7 @@ async def register_company_user(db: AsyncSession, payload: CompanyUserRegisterRe
         # 기업 정보 저장
         company_info = await create_company_info(db, payload)
         # 기업 유저 정보 저장
-        company_user = await create_company_user(db, payload, company_info.id)
+        company_user = await create_company_user(db, payload, company_info.id, background_tasks)
 
         return company_user
 
@@ -113,11 +119,14 @@ async def login_company_user(db: AsyncSession, email: str, password: str):
         raise HTTPException(
             status_code=401,
             detail="이메일 또는 비밀번호가 일치하지 않습니다.")
+    if not company_user.is_active:
+        raise HTTPException(status_code=403, detail="이메일 인증이 필요합니다.")
     if not verify_password(password, company_user.password):
         raise HTTPException(
             status_code=401,
             detail="이메일 또는 비밀번호가 일치하지 않습니다.",
         )
+
     return company_user
 
 

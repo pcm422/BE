@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
@@ -49,9 +49,9 @@ router = APIRouter(prefix="/company", tags=["기업 회원"])  # URL 앞 부분
     },
 )
 async def register_companyuser(
-    payload: CompanyUserRegisterRequest, db: AsyncSession = Depends(get_db_session)
+    payload: CompanyUserRegisterRequest, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db_session)
 ):
-    company_user = await register_company_user(db, payload)
+    company_user = await register_company_user(db, payload, background_tasks)
     user_data = CompanyUserRegisterResponse(
         company_user_id=company_user.id,
         email=company_user.email,
