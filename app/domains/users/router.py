@@ -1,14 +1,22 @@
 import jwt
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.db import get_db_session
 from app.models import User, UserInterest
 
-from .schemas import (TokenRefreshRequest, UserLogin,
-                      UserProfileUpdate, UserRegister, FindEmailRequest, PasswordResetConfirmResponse,
-                      PasswordResetverify, PasswordResetVerifyResponse, PasswordResetConfirmRequest)
+from app.domains.users.schemas import (
+    TokenRefreshRequest,
+    UserLogin,
+    UserProfileUpdate,
+    UserRegister,
+    FindEmailRequest,
+    PasswordResetConfirmResponse,
+    PasswordResetverify,
+    PasswordResetVerifyResponse,
+    PasswordResetConfirmRequest
+)
 from .service import (
     ALGORITHM,
     SECRET_KEY,
@@ -19,8 +27,12 @@ from .service import (
     refresh_access_token,
     register_user,
     update_user,
-    check_email, find_my_email_user_info, reset_password_after_verification, verify_user_reset_password,
+    check_email,
+    find_my_email_user_info,
+    reset_password_after_verification,
+    verify_user_reset_password,
 )
+from app.core.email_utils.mail_service import verify_user_email
 
 router = APIRouter()
 
@@ -78,12 +90,12 @@ async def check_email_def(
 
 # 회원가입
 @router.post("/user/register", tags=["사용자"])
-async def register(user_data: UserRegister, db=Depends(get_db_session)):
+async def register(user_data: UserRegister,  background_tasks: BackgroundTasks, db=Depends(get_db_session),):
     """
     새로운 사용자를 등록하는 엔드포인트입니다.
     사용자 정보를 받아 회원가입 비즈니스 로직을 호출합니다.
     """
-    result = await register_user(db, user_data)  # service의 register_user 호출
+    result = await register_user(db, user_data, background_tasks)  # service의 register_user 호출
     return result  # 결과 반환
 
 
@@ -97,6 +109,14 @@ async def login(user_credentials: UserLogin, db=Depends(get_db_session)):
     result = await login_user(db, user_credentials)  # service의 login_user 호출
     return result  # 결과 반환
 
+# 이메일 인증
+@router.get("/verify-email")
+async def verify_email(token: str, db: AsyncSession = Depends(get_db_session)):
+    """
+    사용자가 이메일을 인증하는 엔드포인트입니다.
+    사용자가 회원가입한 이메일로 메일이 전송되며 메일 상 "인증하기" 버튼을 누르면 is_active가 활성화됩니다.
+    """
+    return await verify_user_email(token, db)
 
 # 로그아웃
 @router.post("/user/logout", tags=["사용자"])
