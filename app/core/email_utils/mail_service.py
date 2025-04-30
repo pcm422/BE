@@ -1,76 +1,93 @@
-from itsdangerous import BadSignature, SignatureExpired
-from app.core.email_utils.mail_send import serializer
+from datetime import datetime, timedelta
 from fastapi import HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.email_utils.mail_send import send_verification_email
-from app.models import User, CompanyUser, company_users
-from app.core.email_utils.mail_send import generate_auth_token
+from app.models.users import EmailVerification
+from app.core.config import SECRET_KEY
 
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+
+serializer = URLSafeTimedSerializer(SECRET_KEY)
+
+# 이메일 인증 요청 처리
 async def handle_verification_email(
     background_tasks: BackgroundTasks,
-    user_id: int,
-    email: str
+    email: str,
+    db: AsyncSession,
+    user_type: str
 ):
+    """
+    이메일 인증 전체 흐름을 캡슐화한 핵심 함수
+    - 토큰 생성
+    - 메일 전송
+    - email_verifications 테이블에 저장
+    """
     try:
-        token = generate_auth_token(user_id=user_id)
+        # 토큰 생성 (email -> 서명된 문자열로 변환)
+        token = serializer.dumps(email)
+
+        # 인증 이메일 전송
         await send_verification_email(
             background_tasks=background_tasks,
-            user_id=user_id,
             to_email=email,
-            token=token
+            token=token,
+            user_type=user_type
         )
+
+        # 인증 요청 정보 DB 저장
+        verification = EmailVerification(
+            email=email,
+            token=token,
+            expires_at=datetime.now() + timedelta(minutes=30),
+            is_verified=False,
+            user_type=user_type
+        )
+        db.add(verification)
+        await db.commit()
+
     except Exception as e:
+        await db.rollback()
         raise HTTPException(status_code=500, detail=f"이메일 인증 메일 전송 실패: {str(e)}")
 
-async def verify_user_email(token: str, db: AsyncSession) -> dict:
+
+# 이메일 인증 처리
+async def verify_user_email(token: str, db: AsyncSession, user_type: str) -> dict:
     """
     이메일 인증 처리 서비스 함수
-    - 토큰 복호화
-    - 유효성 확인 및 사용자 활성화
-    - 만료 시 계정 삭제
+    - 토큰 복호화 (email 추출)
+    - email_verifications 테이블에서 상태 갱신
     """
     try:
-        user_id = serializer.loads(token, max_age=60)  # 1시간 유효 --> 테스트중 1분
+        email = serializer.loads(token, max_age=1800)  # 30분 유효
     except SignatureExpired:
-        # 토큰 만료 시, user_id를 복호화할 수 없으므로 삭제 불가
-        # 그러나 itsdangerous의 SignatureExpired는 loads에서 user_id를 반환함
-        try:
-            user_id = serializer.loads(token)
-        except Exception:
-            user_id = None
-        if user_id is not None:
-            result = await db.execute(select(User).where(User.id == user_id))
-            user = result.scalar_one_or_none()
-            if user and not user.is_active:
-                await db.delete(user)
-                await db.commit()
-        raise HTTPException(status_code=400, detail="인증 링크가 만료되어 계정이 삭제되었습니다.")
+        raise HTTPException(status_code=400, detail="토큰이 만료되었습니다.")
     except BadSignature:
-        raise HTTPException(status_code=400, detail="잘못된 인증 링크입니다.")
+        raise HTTPException(status_code=400, detail="잘못된 인증 토큰입니다.")
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    # 인증 요청 정보 조회
+    result = await db.execute(
+        select(EmailVerification)
+        .where(EmailVerification.email == email,
+                EmailVerification.user_type == user_type
+        )
+        .order_by(EmailVerification.expires_at.desc())
+        .limit(1)
+    )
+    verification = result.scalar_one_or_none()
 
-    if not user:
-        # 일반 사용자에 없으면 기업 사용자 조회 시도
-        result = await db.execute(select(CompanyUser).where(CompanyUser.id == user_id))
-        user = result.scalar_one_or_none()
-        if not user:
-            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    if not verification:
+        raise HTTPException(status_code=404, detail="인증 요청 내역이 없습니다.")
 
-    if user.is_active:
-        raise HTTPException(status_code=400, detail="이미 인증된 계정입니다.")
+    if verification.is_verified:
+        raise HTTPException(status_code=400, detail="이미 인증된 이메일입니다.")
 
-    if user:
-        user.is_active = True
-    else:
-        company_users.is_active = True
-
+    # 인증 상태 업데이트
+    verification.is_verified = True
     await db.commit()
 
     return {
         "status": "success",
-        "message": "이메일 인증이 완료되었습니다. 이제 로그인할 수 있습니다.",
+        "message": "이메일 인증이 완료되었습니다. 이제 회원가입을 진행하세요.",
     }

@@ -1,12 +1,11 @@
 import jwt
 from dotenv import load_dotenv
-from fastapi import HTTPException, BackgroundTasks
+from fastapi import HTTPException
 from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-from app.core.email_utils.mail_service import handle_verification_email
 from app.domains.job_postings.repository import JobPostingRepository
 from app.models import Interest, User, UserInterest, JobPosting
 from app.domains.users.schemas import (TokenRefreshRequest, UserLogin,
@@ -15,27 +14,26 @@ from app.domains.company_users.utiles import verify_password
 from app.domains.job_postings.service import _attach_favorite_status
 from app.core.config import SECRET_KEY, ALGORITHM
 from app.core.utils import hash_password, create_access_token, create_refresh_token
+from app.models.users import EmailVerification
 
 load_dotenv()
 
-async def check_email(db: AsyncSession, email: str) -> dict:
-    """이메일 중복 여부를 확인"""
-    result = await db.execute(select(User).filter(User.email == email))
-    is_duplicate = result.scalar_one_or_none() is not None  # 중복 여부 판단
+async def register_user(
+    db: AsyncSession, user_data: UserRegister
+) -> dict:
+    # 인증 토큰 테이블에서 이메일이 인증된건지 확인 타입확인하여 user, company분리
+    result = await db.execute(
+        select(EmailVerification).filter(
+            EmailVerification.email == user_data.email,
+            EmailVerification.is_verified == True,
+            EmailVerification.user_type == "user"
+        )
+    )
+    verified = result.scalar_one_or_none()
+    if not verified:
+        raise HTTPException(status_code=400, detail="이메일 인증이 완료되지 않았습니다.")
 
-    return {
-        "status": "success",
-        "message": "이미 가입된 이메일입니다." if is_duplicate else "회원가입이 가능한 이메일입니다.",
-        "is_duplicate": is_duplicate
-    }
-
-# 사용자 등록 기능
-async def register_user(db: AsyncSession, user_data: UserRegister, background_tasks: BackgroundTasks) -> dict:
-    # DB에서 중복 이메일 확인
-    email_check_result = await check_email(db, user_data.email)  # 이메일 중복 확인 결과 저장
-    if email_check_result["is_duplicate"]:  # 중복된 경우
-        return email_check_result  # 이미 가입된 이메일 메시지 반환
-    # 새로운 User 인스턴스 생성 (비밀번호는 해시 처리)
+    # User 생성
     new_user = User(
         name=user_data.name,  # 이름 할당
         email=user_data.email,  # 이메일 할당
@@ -45,17 +43,12 @@ async def register_user(db: AsyncSession, user_data: UserRegister, background_ta
         gender=user_data.gender,  # 성별 할당
         signup_purpose=user_data.signup_purpose,  # 가입 목적 할당
         referral_source=user_data.referral_source,  # 유입경로 할당
-        is_active=False  # 활성상태 False
+        is_active=True  # 활성상태 True
     )
+    # 새로운 User 인스턴스 생성 (비밀번호는 해시 처리)
     db.add(new_user)  # DB 세션에 새 사용자 추가
     await db.commit()  # 변경사항 커밋
     await db.refresh(new_user)  # 최신 사용자 정보 갱신
-
-    await handle_verification_email(
-        background_tasks=background_tasks,
-        user_id=new_user.id,
-        email=new_user.email
-    )
 
     # 관심분야 처리
     if user_data.interests:  # 관심분야 데이터가 있을 경우

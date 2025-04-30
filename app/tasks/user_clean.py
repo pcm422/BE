@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 
 from app.core.db import AsyncSessionFactory
 from app.models import User, CompanyUser
+from app.models.users import EmailVerification
+
 
 async def delete_unverified_users():
     async with AsyncSessionFactory() as session:
@@ -29,6 +31,17 @@ async def delete_unverified_users():
         company_users = result.scalars().all()
         for cu in company_users:
             await session.delete(cu)
+
+        # 이메일 인증 요청 만료 레코드 삭제
+        result = await session.execute(
+            select(EmailVerification).where(
+                EmailVerification.is_verified == False,
+                EmailVerification.expires_at <= minutes_ago
+            )
+        )
+        expired_verifications = result.scalars().all()
+        for ev in expired_verifications:
+            await session.delete(ev)
 
         if users or company_users:
             await session.commit()

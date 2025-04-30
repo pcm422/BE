@@ -1,5 +1,6 @@
 import jwt
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, Header, HTTPException, BackgroundTasks, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,14 +28,33 @@ from .service import (
     refresh_access_token,
     register_user,
     update_user,
-    check_email,
     find_my_email_user_info,
     reset_password_after_verification,
     verify_user_reset_password,
 )
-from app.core.email_utils.mail_service import verify_user_email
+from app.core.email_utils.mail_service import verify_user_email, handle_verification_email
 
 router = APIRouter()
+
+# 이메일 인증 요청
+@router.post("/auth/verification", tags=["사용자"])
+async def request_email_verification(
+    background_tasks : BackgroundTasks,
+    email: str = Query(..., description="이메일 인증을 요청할 주소"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    이메일 인증을 요청하는 엔드포인트입니다.
+    이메일 중복 여부를 확인하고 인증 메일을 전송합니다.
+    """
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if user:
+        raise HTTPException(status_code=400, detail="이미 가입된 이메일입니다.")
+
+    await handle_verification_email(background_tasks, email, db, user_type="user")
+    return {"status": "success", "message": "인증 이메일이 전송되었습니다."}
 
 
 # 인증된 현재 사용자 의존성 확인
@@ -74,30 +94,19 @@ async def read_current_user(
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
     return user  # 조회된 사용자 객체 반환
 
-
-@router.get("/check-email", tags=["사용자"])
-async def check_email_def(
-    email: str = Query(..., description="중복 확인할 이메일"),
-    db: AsyncSession = Depends(get_db_session),
-):
-    """
-    이메일 중복 여부를 확인하는 엔드포인트입니다.
-    이미 등록된 이메일인지 확인 후 결과를 반환합니다.
-    """
-    is_duplicate = await check_email(db, email)
-    return is_duplicate
-
-
 # 회원가입
 @router.post("/user/register", tags=["사용자"])
-async def register(user_data: UserRegister,  background_tasks: BackgroundTasks, db=Depends(get_db_session),):
+async def register(
+    user_data: UserRegister,
+    background_tasks: BackgroundTasks,
+    db=Depends(get_db_session),
+):
     """
     새로운 사용자를 등록하는 엔드포인트입니다.
-    사용자 정보를 받아 회원가입 비즈니스 로직을 호출합니다.
+    이메일 인증이 완료된 사용자만 회원가입이 가능합니다.
     """
-    result = await register_user(db, user_data, background_tasks)  # service의 register_user 호출
-    return result  # 결과 반환
-
+    result = await register_user(db, user_data)
+    return result
 
 # 로그인
 @router.post("/user/login", tags=["사용자"])
@@ -111,16 +120,20 @@ async def login(user_credentials: UserLogin, db=Depends(get_db_session)):
 
 # 이메일 인증
 @router.get("/verify-email")
-async def verify_email(token: str, db: AsyncSession = Depends(get_db_session)):
+async def verify_email(
+    token: str,
+    user_type: str = Query(..., description="인증 대상 구분: user 또는 company"),
+    db: AsyncSession = Depends(get_db_session)
+):
     """
     사용자가 이메일을 인증하는 엔드포인트입니다.
-    사용자가 회원가입한 이메일로 메일이 전송되며 메일 상 "인증하기" 버튼을 누르면 is_active가 활성화됩니다.
+    사용자가 회원가입한 이메일로 메일 상 "인증하기" 버튼을 누르면 is_active가 활성화됩니다.
     """
-    return await verify_user_email(token, db)
+    return await verify_user_email(token, user_type=user_type, db=db)
 
 # 로그아웃
 @router.post("/user/logout", tags=["사용자"])
-async def logout(Authorization: str = Header(...)):
+async def logout():
     """
     사용자가 로그아웃하는 엔드포인트입니다.
     JWT 기반의 로그아웃 처리로, 단순 성공 메시지를 반환합니다.
