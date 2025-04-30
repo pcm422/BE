@@ -49,9 +49,8 @@ async def drop_test_database(conn, db_name: str):
 
 # --- FIXTURE 정의 ---
 
-
-@pytest_asyncio.fixture(scope="session")  # session 스코프로 수정
-async def db_engine():
+@pytest_asyncio.fixture(scope="function")
+async def db_engine(event_loop):  # ✨ 여기 event_loop 명시 추가!
     """테스트 세션마다 DB 생성 및 삭제"""
     engine = create_async_engine(TEST_DATABASE_URL, future=True)
 
