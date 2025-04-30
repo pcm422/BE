@@ -32,7 +32,7 @@ async def verify_user_email(token: str, db: AsyncSession) -> dict:
     - 만료 시 계정 삭제
     """
     try:
-        user_id = serializer.loads(token, max_age=3600)  # 1시간 유효
+        user_id = serializer.loads(token, max_age=60)  # 1시간 유효 --> 테스트중 1분
     except SignatureExpired:
         # 토큰 만료 시, user_id를 복호화할 수 없으므로 삭제 불가
         # 그러나 itsdangerous의 SignatureExpired는 loads에서 user_id를 반환함
