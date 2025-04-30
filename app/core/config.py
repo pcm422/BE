@@ -30,4 +30,4 @@ if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
     raise ValueError("SMTP 인증 정보가 설정되지 않았습니다.")
 
 # 이메일 인증/비밀번호 재설정 링크에서 사용할 사이트 URL
-SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
+SITE_URL = os.getenv("SITE_URL", "http://localhost:5173")

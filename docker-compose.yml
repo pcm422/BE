@@ -29,6 +29,7 @@ services:
       - EMAIL_PORT=${EMAIL_PORT}
       - EMAIL_USE_SSL=${EMAIL_USE_SSL}
       - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - SITE_URL=${SITE_URL}
       - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
       # 개발에 필요한 다른 환경 변수들 추가
@@ -54,7 +55,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data # 데이터 영구 저장을 위한 볼륨
     ports:
-      - "5433:5432" # 호스트 5432 포트를 컨테이너 5432 포트에 연결 (DB 툴 연결용)
+      - "5432:5432" # 호스트 5432 포트를 컨테이너 5432 포트에 연결 (DB 툴 연결용)
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}

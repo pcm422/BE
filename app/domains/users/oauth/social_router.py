@@ -82,6 +82,11 @@ async def auth_kakao_login(
             },
         }
 
+    # is_active 활성화
+    if not user.is_active:
+        user.is_active = True
+        await db.commit()
+
     # JWT 토큰 발급
     access_jwt = await create_access_token({"sub": str(user.id)})
     refresh_jwt = await create_refresh_token({"sub": str(user.id)})
@@ -159,6 +164,11 @@ async def auth_naver_login(
                 "social_type": "naver"
             },
         }
+
+    # is_active 활성화
+    if not user.is_active:
+        user.is_active = True
+        await db.commit()
 
     # JWT 토큰 발급
     access_jwt = await create_access_token({"sub": str(user.id)})
