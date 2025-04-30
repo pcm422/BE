@@ -32,7 +32,7 @@ async def auth_kakao_login(
             "KAKAO_SECRET"
         ),  # KAKAO_SECRET 키 사용 (환경변수 이름에 따라 수정)
         "redirect_uri": os.getenv(
-            "KAKAO_REDIRECT_URI", "http://localhost:8000/auth/kakao/login"
+            "KAKAO_REDIRECT_URI", "http://localhost:5173/auth/kakao/login"
         ),
         "code": code,
     }

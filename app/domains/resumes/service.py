@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import delete
 from typing import Optional
 
 from app.models import Resume, ResumeEducation
@@ -98,42 +99,41 @@ async def update_existing_resume(resumes_id: int, user_id: int, resume_data: Res
     ### 학력사항과 경력사항은 있으면 삭제 후 생성 없으면 그대로 진행
     # 학력사항 업데이트
     if resume_data.educations is not None:
-        # 기존 학력사항을 모두 삭제
-        result = await db.execute(
-            select(ResumeEducation).filter(ResumeEducation.resumes_id == resume.id)
+        # 기존 학력사항을 bulk delete로 제거
+        await db.execute(
+            delete(ResumeEducation).where(ResumeEducation.resumes_id == resume.id)
         )
-        existing_educations = result.scalars().all()
-        for edu in existing_educations:
-            await db.delete(edu)
+        await db.flush()  # 삭제 즉시 반영
 
-        # 새 학력사항을 추가
-        for edu_data in resume_data.educations:
-            new_education = ResumeEducation(
-                resumes_id=resume.id,
+        resume.educations = [
+            ResumeEducation(
                 education_type=edu_data.education_type,
                 school_name=edu_data.school_name,
                 education_status=edu_data.education_status,
                 start_date=edu_data.start_date,
                 end_date=edu_data.end_date,
             )
-            db.add(new_education)
+            for edu_data in resume_data.educations
+        ]
 
     # 경력사항 업데이트
     if resume_data.experiences is not None:
-        # 기존 경력사항을 모두 삭제
-        for exp in resume.experiences:
-            await db.delete(exp)
-        # 새 경력사항을 추가
-        for exp_data in resume_data.experiences:
-            new_experience = ResumeExperience(
-                resume=resume,
+        # 기존 경력사항을 bulk delete로 제거
+        await db.execute(
+            delete(ResumeExperience).where(ResumeExperience.resume_id == resume.id)
+        )
+        await db.flush()  # 삭제 즉시 반영
+
+        resume.experiences = [
+            ResumeExperience(
                 company_name=exp_data.company_name,
                 position=exp_data.position,
                 start_date=exp_data.start_date,
                 end_date=exp_data.end_date,
                 description=exp_data.description,
             )
-            db.add(new_experience)
+            for exp_data in resume_data.experiences
+        ]
 
     try:
         # DB에 변경 사항을 커밋함 (수정 저장)

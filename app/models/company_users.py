@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
 
@@ -14,6 +14,7 @@ class CompanyUser(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(100), unique=True, index=True)  # 로그인 이메일
     password = Column(String(128), nullable=False)  # 비밀번호
+    is_active = Column(Boolean, nullable=False, default=False)  # 이메일 활성상태
     company_id = Column(
         Integer, ForeignKey("company_info.id"), nullable=False
     )  # 참조 기업 ID
