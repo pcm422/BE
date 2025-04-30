@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import ALGORITHM, SECRET_KEY
-from app.core.email_utils.mail_service import handle_verification_email
 from app.core.utils import create_access_token
 from app.domains.company_users.schemas import (
     CompanyTokenRefreshRequest,
@@ -25,6 +24,7 @@ from app.domains.company_users.utiles import (
     verify_password,
 )
 from app.models import CompanyInfo, CompanyUser
+from app.models.users import EmailVerification
 
 
 # 사업자 등록번호 중복 확인
@@ -38,18 +38,6 @@ async def check_dupl_business_number(db: AsyncSession, business_reg_number: str)
             status_code=status.HTTP_409_CONFLICT,
             detail="이미 등록된 사업자등록번호입니다.",
         )
-
-
-# 이메일 중복 확인
-async def check_dupl_email(db: AsyncSession, email: str):
-    result = await db.execute(select(CompanyUser).filter_by(email=email))
-    email = result.scalars().first()
-    if email:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="이미 가입된 이메일입니다.",
-        )
-
 
 # 기업 정보 저장
 async def create_company_info(db: AsyncSession, payload: CompanyUserBase):
@@ -70,8 +58,7 @@ async def create_company_info(db: AsyncSession, payload: CompanyUserBase):
 
 # 기업 회원 저장
 async def create_company_user(
-    db: AsyncSession, payload: CompanyUserBase, company_id: int, background_tasks: BackgroundTasks
-) -> CompanyUser:
+    db: AsyncSession, payload: CompanyUserBase, company_id: int) -> CompanyUser:
     company_user = CompanyUser(
         email=str(payload.email),
         password=hash_password(payload.password),
@@ -80,31 +67,35 @@ async def create_company_user(
     db.add(company_user)
     await db.commit()
     await db.refresh(company_user)
-    await handle_verification_email(
-        background_tasks=background_tasks,
-        user_id=company_user.id,
-        email=company_user.email
-    )
     return company_user
 
 
 # 기업 회원 가입
-async def register_company_user(db: AsyncSession, payload: CompanyUserRegisterRequest, background_tasks: BackgroundTasks):
+async def register_company_user(db: AsyncSession, payload: CompanyUserRegisterRequest):
     # 이메일, 사업자 중복 확인
-    await check_dupl_email(db, payload.email)
     await check_dupl_business_number(db, payload.business_reg_number)
-    # 비밀번호 일치 확인
     check_password_match(payload.password, payload.confirm_password)
+
+    # 이메일 인증 여부 확인
+    result = await db.execute(
+        select(EmailVerification).where(
+            EmailVerification.email == str(payload.email),
+            EmailVerification.is_verified == True,
+            EmailVerification.user_type == "company"
+        )
+    )
+    verified = result.scalar_one_or_none()
+    if not verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이메일 인증이 완료되지 않았습니다."
+        )
 
     # 정보 저장
     try:
-        # 기업 정보 저장
-        company_info = await create_company_info(db, payload)
-        # 기업 유저 정보 저장
-        company_user = await create_company_user(db, payload, company_info.id, background_tasks)
-
+        company_info = await create_company_info(db, payload)  # 기업 정보 저장
+        company_user = await create_company_user(db, payload, company_info.id) # 기업 유저 정보 저장
         return company_user
-
     except Exception:
         await db.rollback()
         raise HTTPException(

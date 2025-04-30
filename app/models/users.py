@@ -74,3 +74,15 @@ class User(Base):
 
     def __str__(self):
         return self.name
+
+
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, nullable=False, index= True)  # 인증 요청된 이메일
+    token = Column(String, unique=True, nullable=False)  # 인증 토큰
+    is_verified = Column(Boolean, default=False)   # 인증 여부
+    expires_at = Column(DateTime, nullable=False)   # 유효기간
+    user_type = Column(String, nullable=False)  # 유저타입
+

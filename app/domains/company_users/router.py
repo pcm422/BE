@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, status, BackgroundTasks
+from fastapi import APIRouter, Depends, status, BackgroundTasks, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
+from app.core.email_utils.mail_service import handle_verification_email
 from app.core.utils import (
     create_access_token,
     create_refresh_token,
@@ -24,7 +26,6 @@ from app.domains.company_users.schemas import (
 )
 from app.domains.company_users.service import (
     check_dupl_business_number,
-    check_dupl_email,
     delete_company_user,
     find_company_user_email,
     generate_password_reset_token,
@@ -41,6 +42,30 @@ from app.models import CompanyUser
 router = APIRouter(prefix="/company", tags=["기업 회원"])  # URL 앞 부분
 
 
+# 이메일 인증 요청 (기업회원용)
+@router.post(
+    "/auth/verification",
+    summary="기업 회원 이메일 인증 요청",
+    status_code=status.HTTP_200_OK,
+    response_model=SuccessResponse[dict],
+)
+async def request_companyuser_email_verification(
+    background_tasks: BackgroundTasks,
+    email: str = Query(..., description="인증할 기업 이메일"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    from app.models import CompanyUser
+    result = await db.execute(select(CompanyUser).where(CompanyUser.email == email))
+    user = result.scalar_one_or_none()
+
+    if user:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="이미 가입된 이메일입니다.")
+
+    await handle_verification_email(background_tasks, email, db, user_type="company")
+
+    return success_response("인증 이메일이 전송되었습니다.", data={"email": email})
+
 # 회원가입
 @router.post(
     "/register",
@@ -54,31 +79,15 @@ router = APIRouter(prefix="/company", tags=["기업 회원"])  # URL 앞 부분
     },
 )
 async def register_companyuser(
-    payload: CompanyUserRegisterRequest, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db_session)
+    payload: CompanyUserRegisterRequest, db: AsyncSession = Depends(get_db_session)
 ):
-    company_user = await register_company_user(db, payload, background_tasks)
+    company_user = await register_company_user(db, payload)
     user_data = CompanyUserRegisterResponse(
         company_user_id=company_user.id,
         email=company_user.email,
         company_name=company_user.company_name,
     )
     return success_response("회원가입이 완료 되었습니다.", data=user_data)
-
-
-# 회원가입시 이메일 중복 확인
-@router.get(
-    "/register/check-email",
-    summary="이메일 중복 체크",
-    response_model=SuccessResponse[dict],
-    responses={409: {"description": "이미 사용 중인 이메일"}},
-)
-async def check_companyuser_email(
-    email: str,
-    db: AsyncSession = Depends(get_db_session),
-):
-    await check_dupl_email(db, email)
-    return success_response("사용 가능한 이메일 입니다.", data={"email": email})
-
 
 # 회원가입시 사업자번호 중복 확인
 @router.get(
@@ -96,7 +105,6 @@ async def check_companyuser_brn(
         "사용 가능한 사업자 등록번호입니다.",
         data={"business_reg_number": business_reg_number},
     )
-
 
 # 로그인
 @router.post(
