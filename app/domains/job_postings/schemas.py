@@ -12,7 +12,13 @@ from app.models.job_postings import (EducationEnum, JobCategoryEnum,
 # Enum 타입 힌팅용
 TEnum = TypeVar("TEnum", bound=enum.Enum)
 
-# --- 스키마 내부/라우터용 파싱 헬퍼 함수 --- (라우터에서 주로 사용)
+# 정렬 옵션 Enum
+class SortOptions(str, enum.Enum):
+    LATEST = "latest"
+    SALARY_HIGH = "salary_high"
+    SALARY_LOW = "salary_low"
+
+# --- 스키마 내부/라우터용 파싱 헬퍼 함수 --- 
 
 def _validate_recruitment_dates(start_date: date | None, end_date: date | None, is_always_recruiting: bool | None) -> None:
     """모집 시작일/종료일 유효성 검사 (Pydantic 모델 검증용)"""

@@ -14,7 +14,8 @@ from app.domains.job_postings.schemas import (
                                                 JobPostingCreateFormData,
                                                 JobPostingCreate,
                                                 _parse_date, _parse_int, _parse_enum, _parse_float, _parse_bool,
-                                                EducationEnum, PaymentMethodEnum, JobCategoryEnum, WorkDurationEnum
+                                                EducationEnum, PaymentMethodEnum, JobCategoryEnum, WorkDurationEnum,
+                                                SortOptions
                                                 )
 from pydantic import ValidationError
 
@@ -22,17 +23,11 @@ from app.domains.job_postings.repository import JobPostingRepository
 from app.domains.job_postings.service import get_job_posting_repository
 
 from app.models.company_users import CompanyUser
-from app.models.job_postings import JobPosting, JobCategoryEnum
+from app.models.job_postings import JobPosting
 from app.models.users import User
 
 # 로거 설정
 logger = logging.getLogger(__name__)
-
-# 정렬 옵션
-class SortOptions(str, Enum):
-    LATEST = "latest"
-    SALARY_HIGH = "salary_high"
-    SALARY_LOW = "salary_low"
 
 # 채용 공고 API 라우터
 router = APIRouter(prefix="/posting", tags=["채용공고"])
@@ -219,12 +214,12 @@ async def search_postings(
         repository=repository,
         keyword=keyword,
         location=location,
-        job_category=job_category.value if job_category else None, # Enum 값 전달
+        job_category=job_category,
         employment_type=employment_type,
         is_always_recruiting=is_always_recruiting,
         page=page,
         limit=limit,
-        sort=sort.value, # Enum 값 전달
+        sort=sort,
         user_id=user_id
     )
     # 3. 페이지네이션 응답 스키마에 맞춰 결과 반환

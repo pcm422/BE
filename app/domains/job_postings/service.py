@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, status
 from datetime import datetime
 import logging
 
-from app.domains.job_postings.schemas import JobPostingUpdate, JobPostingCreate
+from app.domains.job_postings.schemas import JobPostingUpdate, JobPostingCreate, JobCategoryEnum, SortOptions
 from app.models.job_postings import JobPosting
 from app.models.users import User
 from app.domains.job_postings.repository import JobPostingRepository
@@ -190,12 +190,12 @@ async def search_job_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository),
     keyword: str | None = None,
     location: str | None = None,
-    job_category: str | None = None,
+    job_category: JobCategoryEnum | None = None,
     employment_type: str | None = None,
     is_always_recruiting: bool | None = None,
     page: int = 1,
     limit: int = 10,
-    sort: str = "latest",
+    sort: SortOptions = SortOptions.LATEST,
     user_id: Optional[int] = None
 ) -> tuple[List[JobPosting], int]:
     """채용 공고 검색 (필터링, 정렬, 페이지네이션, 로그인 시 즐겨찾기 여부 포함)"""
@@ -211,18 +211,18 @@ async def search_job_postings(
     if location:
         filters.append(JobPosting.work_address.ilike(f"%{location}%"))
     if job_category:
-        filters.append(JobPosting.job_category == job_category)
+        filters.append(JobPosting.job_category == job_category.value)
     if employment_type:
         filters.append(JobPosting.employment_type == employment_type)
     if is_always_recruiting is not None:
         filters.append(JobPosting.is_always_recruiting == is_always_recruiting)
 
     # 2. 정렬 조건 생성
-    if sort == "latest":
+    if sort == SortOptions.LATEST:
         order_by_clause = desc(JobPosting.created_at)
-    elif sort == "salary_high":
+    elif sort == SortOptions.SALARY_HIGH:
         order_by_clause = desc(JobPosting.salary)
-    elif sort == "salary_low":
+    elif sort == SortOptions.SALARY_LOW:
         order_by_clause = JobPosting.salary
     else: # 기본값: 최신순
         order_by_clause = desc(JobPosting.created_at)

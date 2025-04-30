@@ -117,10 +117,10 @@ class JobPostingRepository:
 
     async def list_popular_by_age_group(self, age_start: int, age_end: int, limit: int) -> List[JobPosting]:
         """특정 연령대 지원자 수 기준으로 인기 채용 공고 목록을 조회합니다."""
-        # User.birthday(문자열)를 Date로 캐스팅하여 나이 계산
-        age_expr = func.floor(
-            (func.current_date() - cast(User.birthday, Date)) / 365.25
-        )
+        # User.birthday(문자열)를 Date로 캐스팅하고 AGE 함수를 사용하여 정확한 만 나이 계산
+        # PostgreSQL의 AGE(end_date, start_date) 함수는 interval을 반환
+        # date_part('year', interval)로 년 단위 차이를 추출
+        age_expr = func.date_part('year', func.age(cast(User.birthday, Date)))
 
         # 특정 연령대 지원자 수를 계산하는 서브쿼리
         applications_count_sq = (
