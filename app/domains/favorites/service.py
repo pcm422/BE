@@ -71,14 +71,17 @@ async def list_favorites(db: AsyncSession, current_user: User) -> list:
         job_query = select(JobPosting).where(JobPosting.id == fav.job_posting_id)
         job_result = await db.execute(job_query)
         job = job_result.scalar_one_or_none()
-        title = job.title if job else ""
-        # 각 즐겨찾기 객체를 FavoriteRead 스키마와 유사한 딕셔너리로 구성합니다.
         favorites.append(
             {
                 "id": fav.id,
                 "job_posting_id": fav.job_posting_id,
                 "created_at": fav.created_at,
-                "title": title,
+                "title": job.title if job else "",
+                "work_place_name": job.work_place_name if job else "",
+                "recruit_period_end": job.recruit_period_end if job else None,
+                "work_address": job.work_address if job else "",
+                "is_favorited": True,
+                "is_always_recruiting": job.is_always_recruiting if job else False,
             }
         )
     return favorites
