@@ -7,6 +7,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.core.email_utils.mail_service import handle_verification_email
+from app.domains.job_postings.repository import JobPostingRepository
 from app.models import Interest, User, UserInterest, JobPosting
 from app.domains.users.schemas import (TokenRefreshRequest, UserLogin,
                                     UserProfileUpdate, UserRegister, PasswordResetverify)
@@ -364,8 +365,8 @@ async def recommend_jobs(db: AsyncSession, current_user: User) -> dict:
     if not job_postings:
         raise HTTPException(status_code=404, detail="해당 채용정보를 찾을 수 없습니다.")
 
-    # 여기서 즐겨찾기 상태 추가
-    await _attach_favorite_status(db, job_postings, current_user.id)
+    repository = JobPostingRepository(db)  # db는 AsyncSession
+    await _attach_favorite_status(job_postings, current_user.id, repository)
 
     # 최종 직렬화된 응답 데이터
     job_list = [
