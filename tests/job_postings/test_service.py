@@ -12,13 +12,35 @@ from app.models.base import Base
 from datetime import date, timedelta
 
 def test_job_posting_service_crud(monkeypatch):
+    import asyncpg
+    import pytest
+
+    async def ensure_database_exists():
+        try:
+            conn = await asyncpg.connect(
+                user="postgres",
+                password="postgres",
+                database="postgres",  # default DB
+                host="db"
+            )
+            dbs = await conn.fetch("SELECT 1 FROM pg_database WHERE datname='joint_test'")
+            if not dbs:
+                await conn.execute("CREATE DATABASE joint_test")
+            await conn.close()
+        except Exception as e:
+            pytest.fail(f"테스트용 DB 생성 중 오류 발생: {e}")
+
+    asyncio.run(ensure_database_exists())
+
     # joint_test DB에 테이블 생성
     engine = create_async_engine(TEST_DATABASE_URL, future=True)
     async def create_tables():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         await engine.dispose()
+
     asyncio.run(create_tables())
+
     TestingSessionLocal = async_sessionmaker(
         bind=engine,
         class_=AsyncSession,

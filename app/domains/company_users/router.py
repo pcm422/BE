@@ -17,18 +17,23 @@ from app.domains.company_users.schemas import (
     CompanyUserUpdateRequest,
     CompanyUserUpdateResponse,
     FindCompanyUserEmail,
-    ResetCompanyUserPassword,
+    PasswordResetRequest,
+    PasswordResetVerifyRequest,
+    PasswordResetVerifyResponse,
     SuccessResponse,
 )
 from app.domains.company_users.service import (
+    check_dupl_business_number,
+    check_dupl_email,
     delete_company_user,
     find_company_user_email,
+    generate_password_reset_token,
     get_company_user_mypage,
     login_company_user,
     refresh_company_user_access_token,
     register_company_user,
-    reset_company_user_password,
-    update_company_user, check_dupl_email, check_dupl_business_number,
+    reset_password_with_token,
+    update_company_user,
 )
 from app.domains.company_users.utiles import success_response
 from app.models import CompanyUser
@@ -59,36 +64,40 @@ async def register_companyuser(
     )
     return success_response("회원가입이 완료 되었습니다.", data=user_data)
 
+
 # 회원가입시 이메일 중복 확인
 @router.get(
     "/register/check-email",
     summary="이메일 중복 체크",
     response_model=SuccessResponse[dict],
-    responses={409 : {"description": "이미 사용 중인 이메일"}}
+    responses={409: {"description": "이미 사용 중인 이메일"}},
 )
 async def check_companyuser_email(
-        email: str,
-        db: AsyncSession = Depends(get_db_session),
+    email: str,
+    db: AsyncSession = Depends(get_db_session),
 ):
-    await check_dupl_email(db,email)
+    await check_dupl_email(db, email)
     return success_response("사용 가능한 이메일 입니다.", data={"email": email})
+
 
 # 회원가입시 사업자번호 중복 확인
 @router.get(
     "/register/check-brn",
     summary="사업자등록번호 중복 체크",
     response_model=SuccessResponse[dict],
-    responses={409:{"description": "이미 등록된 사업자등록번호"}}
+    responses={409: {"description": "이미 등록된 사업자등록번호"}},
 )
 async def check_companyuser_brn(
-        business_reg_number: str,
-        db: AsyncSession = Depends(get_db_session),
+    business_reg_number: str,
+    db: AsyncSession = Depends(get_db_session),
 ):
-    await check_dupl_business_number(db,business_reg_number)
+    await check_dupl_business_number(db, business_reg_number)
     return success_response(
         "사용 가능한 사업자 등록번호입니다.",
-        data={"business_reg_number": business_reg_number}
+        data={"business_reg_number": business_reg_number},
     )
+
+
 # 로그인
 @router.post(
     "/login",
@@ -215,27 +224,45 @@ async def find_email_companyuser(
     return success_response("이메일이 조회되었습니다.", data=result)
 
 
-# 기업 회원 비밀번호 재설정
+# 1) 재설정용 검증 토큰 발급
+@router.post(
+    "/reset-password/verify",
+    summary="비밀번호 재설정용 토큰 발급",
+    response_model=SuccessResponse[PasswordResetVerifyResponse],
+    responses={404: {"description": "검증 실패"}},
+)
+async def verify_reset_password(
+    payload: PasswordResetVerifyRequest,
+    db: AsyncSession = Depends(get_db_session),
+):
+    token = await generate_password_reset_token(db, payload)
+    return success_response(
+        "재설정 토큰이 발급되었습니다.",
+        data={"reset_token": token},
+    )
+
+
+# 2) 토큰으로 실제 비밀번호 재설정
 @router.post(
     "/reset-password",
     summary="비밀번호 재설정",
     status_code=status.HTTP_200_OK,
-    response_model=SuccessResponse[dict],
+    response_model=SuccessResponse[None],
     responses={
-        200: {"description": "비밀번호 재설정 완료"},
         400: {"description": "비밀번호 불일치"},
-        404: {"description": "일치하는 회원 없음"},
+        401: {"description": "토큰 오류"},
+        404: {"description": "사용자 없음"},
     },
 )
-async def reset_password_companyuser(
-    payload: ResetCompanyUserPassword,
+async def reset_password(
+    payload: PasswordResetRequest,
     db: AsyncSession = Depends(get_db_session),
 ):
-    result = await reset_company_user_password(db=db, payload=payload)
-    return success_response(
-        "기업 회원의 비밀번호 재설정이 완료되었습니다.",
-        data={"email": result},
+    await reset_password_with_token(
+        db, payload.reset_token, payload.new_password, payload.confirm_password
     )
+    return success_response("비밀번호가 성공적으로 재설정되었습니다.")
+
 
 # 기업 회원 토큰 재발급
 @router.post(

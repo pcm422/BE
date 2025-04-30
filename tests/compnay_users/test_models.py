@@ -1,5 +1,6 @@
-import pytest
 from datetime import datetime
+
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -7,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from app.models.base import Base
 from app.models.company_info import CompanyInfo
 from app.models.company_users import CompanyUser
+
 
 @pytest.fixture(scope="module")
 def db_session():
@@ -23,6 +25,7 @@ def db_session():
     session.close()
     Base.metadata.drop_all(engine)
 
+
 def test_companyinfo_model_fields_and_str(db_session):
     # CompanyInfo 인스턴스 생성
     company = CompanyInfo(
@@ -35,12 +38,12 @@ def test_companyinfo_model_fields_and_str(db_session):
         manager_phone="01012345678",
         manager_email="mgr@test.com",
         address="서울시 양천구",
-        company_image="http://example.com/img.png"
+        company_image="http://example.com/img.png",
     )
 
     db_session.add(company)
-    db_session.commit()           # 동기 커밋
-    db_session.refresh(company)   # 동기 리프레시
+    db_session.commit()  # 동기 커밋
+    db_session.refresh(company)  # 동기 리프레시
 
     # 검증
     assert company.id is not None
@@ -48,6 +51,7 @@ def test_companyinfo_model_fields_and_str(db_session):
     assert company.business_reg_number == "1234567890"
     assert company.address == "서울시 양천구"
     assert str(company) == "테스트 회사"
+
 
 def test_create_company_user_with_relation(db_session):
     # 1) CompanyInfo 생성
@@ -59,7 +63,7 @@ def test_create_company_user_with_relation(db_session):
         ceo_name="이대표",
         manager_name="조매니저",
         manager_phone="01087654321",
-        manager_email="mgr@relation.com"
+        manager_email="mgr@relation.com",
     )
     db_session.add(company)
     db_session.commit()
@@ -69,7 +73,7 @@ def test_create_company_user_with_relation(db_session):
     user = CompanyUser(
         email="user@rel.com",
         password="hashed_password",  # 실제 해시는 service 레이어 테스트에서
-        company_id=company.id
+        company_id=company.id,
     )
     db_session.add(user)
     db_session.commit()
