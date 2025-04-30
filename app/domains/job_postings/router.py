@@ -1,5 +1,4 @@
 from typing import Optional
-from enum import Enum
 import logging
 
 from fastapi import APIRouter, Depends, Query, status, UploadFile, File
