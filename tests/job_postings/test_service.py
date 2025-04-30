@@ -1,12 +1,10 @@
 import uuid
-import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from app.domains.company_users.schemas import CompanyUserRegisterRequest
 from app.domains.company_users.service import register_company_user
 from app.domains.job_postings.schemas import JobPostingCreate, JobPostingUpdate
 from app.domains.job_postings import service as job_service
 from app.domains.job_postings.repository import JobPostingRepository
-from starlette.datastructures import UploadFile, Headers
 from tests.conftest import TEST_DATABASE_URL
 from app.models.base import Base
 from datetime import date, timedelta
