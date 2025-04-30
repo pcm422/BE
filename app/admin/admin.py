@@ -269,7 +269,7 @@ class CompanyInfoAdmin(BaseAdmin, model=CompanyInfo):
     }
 
 class CompanyUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=CompanyUser):
-    column_list = ["id", "company.company_name", "email", "created_at", "updated_at"]
+    column_list = ["id", "company.company_name", "email", "is_active", "created_at", "updated_at"]
     column_searchable_list = ["email", "company.company_name"]
     column_selectinload_list = [CompanyUser.company, CompanyUser.job_postings]
     name = "기업 담당자"
@@ -282,6 +282,7 @@ class CompanyUserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model
         "created_at": "가입일 (KST)",
         "updated_at": "수정일 (KST)",
         "email": "로그인 이메일",
+        "is_active": "활성 상태",
         "company": "소속 회사",
         "job_postings": "작성한 공고"
     }
