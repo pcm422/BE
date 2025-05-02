@@ -106,6 +106,8 @@ async def create_job_posting(
             "other_conditions": form_data.other_conditions,
             "work_address": form_data.work_address,
             "work_place_name": form_data.work_place_name,
+            "region1": form_data.region1,
+            "region2": form_data.region2,
             "payment_method": _parse_enum(PaymentMethodEnum, form_data.payment_method, "급여 지급 방식"),
             "job_category": _parse_enum(JobCategoryEnum, form_data.job_category, "직종 카테고리"),
             "work_duration": _parse_enum(WorkDurationEnum, form_data.work_duration, "근무 기간"),
