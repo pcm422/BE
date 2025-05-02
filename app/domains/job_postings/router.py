@@ -80,6 +80,7 @@ async def create_job_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository) # 서비스 호출 시 필요
 ) -> JobPosting:
     """채용공고 생성 API"""
+    logger.info("POST /posting 요청 수신")
     # 1. 이미지 업로드 (선택적)
     postings_image_url = None
     if image_file:
@@ -173,6 +174,7 @@ async def list_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> PaginatedJobPostingResponse:
     """채용공고 목록 조회 API (페이지네이션)"""
+    logger.info(f"GET /posting 요청 수신: skip={skip}, limit={limit}, user_id={current_user.id if current_user else None}")
     # 1. 현재 로그인 사용자 ID 추출 (없으면 None)
     user_id = current_user.id if current_user else None
     # 2. 서비스 호출하여 공고 목록 및 전체 개수 조회
@@ -197,7 +199,8 @@ async def list_postings(
 )
 async def search_postings(
     keyword: str | None = Query(None, description="검색 키워드 (제목, 내용, 요약)"),
-    location: str | None = Query(None, description="근무지 위치 (주소 일부)"),
+    location1: str | None = Query(None, description="근무지 지역(시/도)"),
+    location2: str | None = Query(None, description="근무지 지역(구/군)"),
     job_category: JobCategoryEnum | None = Query(None, description="직무 카테고리"),
     employment_type: str | None = Query(None, description="고용 형태"),
     is_always_recruiting: bool | None = Query(None, description="상시 채용 여부"),
@@ -208,13 +211,15 @@ async def search_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> PaginatedJobPostingResponse:
     """채용공고 검색 API (필터링, 정렬, 페이지네이션)"""
+    logger.info(f"GET /posting/search 요청 수신: keyword={keyword}, location1={location1}, location2={location2}, job_category={job_category}, employment_type={employment_type}, is_always_recruiting={is_always_recruiting}, page={page}, limit={limit}, sort={sort}, user_id={current_user.id if current_user else None}")
     # 1. 현재 로그인 사용자 ID 추출 (없으면 None)
     user_id = current_user.id if current_user else None
     # 2. 서비스 호출하여 검색 조건에 맞는 공고 목록 및 전체 개수 조회
     postings, total_count = await service.search_job_postings(
         repository=repository,
         keyword=keyword,
-        location=location,
+        location1=location1,
+        location2=location2,
         job_category=job_category,
         employment_type=employment_type,
         is_always_recruiting=is_always_recruiting,
@@ -244,6 +249,7 @@ async def list_popular_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> PaginatedJobPostingResponse:
     """인기 채용공고 목록 조회 API (지원자 수 기준)"""
+    logger.info(f"GET /posting/popular 요청 수신: limit={limit}, user_id={current_user.id if current_user else None}")
     # 1. 현재 로그인 사용자 ID 추출 (없으면 None)
     user_id = current_user.id if current_user else None
     # 2. 서비스 호출하여 인기 공고 목록 및 개수 조회
@@ -272,6 +278,7 @@ async def list_popular_postings_by_my_age(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> PaginatedJobPostingResponse:
     """사용자 연령대별 인기 채용공고 조회 API"""
+    logger.info(f"GET /posting/popular-by-my-age 요청 수신: limit={limit}, user_id={current_user.id if current_user else None}")
     # 1. 로그인 여부 확인 (이 API는 로그인 필수)
     if not current_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="로그인이 필요합니다.")
@@ -304,6 +311,7 @@ async def get_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> JobPosting:
     """채용공고 상세 조회 API"""
+    logger.info(f"GET /posting/{job_posting_id} 요청 수신: user_id={current_user.id if current_user else None}")
     # 1. 현재 로그인 사용자 ID 추출 (없으면 None)
     user_id = current_user.id if current_user else None
     # 2. 헬퍼 함수 사용하여 공고 조회 (없으면 404 발생)
@@ -325,6 +333,7 @@ async def update_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository) # 공고 조회 및 서비스 호출 시 필요
 ) -> JobPosting:
     """채용공고 수정 API"""
+    logger.info(f"PATCH /posting/{job_posting_id} 요청 수신")
     # 1. 공고 ID로 공고 조회 (레포지토리 직접 사용, 없으면 404)
     posting = await repository.get_by_id(job_posting_id)
     if not posting:
@@ -356,6 +365,7 @@ async def delete_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository) # 공고 조회 및 서비스 호출 시 필요
 ) -> None:
     """채용공고 삭제 API"""
+    logger.info(f"DELETE /posting/{job_posting_id} 요청 수신")
     # 1. 공고 ID로 공고 조회 (레포지토리 직접 사용, 없으면 404)
     posting = await repository.get_by_id(job_posting_id)
     if not posting:

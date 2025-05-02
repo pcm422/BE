@@ -68,6 +68,7 @@ async def create_job_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository),
 ) -> JobPosting:
     """채용 공고 생성 서비스"""
+    logger.info(f"채용 공고 생성 시작: author_id={author_id}, company_id={company_id}") # 시작 로그 추가
     # 1. ORM 모델에 맞게 데이터 준비
     orm_data = job_posting_data.model_dump(exclude_unset=True) # 입력 스키마에서 ORM 데이터 추출
     orm_data["author_id"] = author_id # 작성자 ID 추가
@@ -78,10 +79,11 @@ async def create_job_posting(
         job_posting = await repository.create(orm_data)
         # 3. 생성된 공고에 기본 즐겨찾기 상태 설정 (생성 직후이므로 None)
         job_posting.is_favorited = None
+        logger.info(f"채용 공고 생성 완료: id={job_posting.id}") # 성공 로그 추가
         return job_posting
     except Exception as e:
         # 4. 오류 처리
-        logger.exception("Error creating job posting") # 예외 정보와 함께 에러 로그 기록
+        logger.exception(f"채용 공고 생성 오류: author_id={author_id}, company_id={company_id}") # 오류 로그에 컨텍스트 추가
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="채용 공고 생성 중 오류가 발생했습니다."
@@ -118,17 +120,20 @@ async def get_job_posting(
     user_id: Optional[int] = None
 ) -> JobPosting | None:
     """ID로 특정 채용 공고 조회 (로그인 시 즐겨찾기 여부 포함)"""
+    logger.info(f"채용 공고 상세 조회 시작: id={job_posting_id}, user_id={user_id}") # 시작 로그 추가
     # 1. ID로 공고 조회
     job_posting = await repository.get_by_id(job_posting_id)
 
     # 2. 공고가 없으면 None 반환 (라우터에서 404 처리)
     if not job_posting:
+        logger.warning(f"채용 공고 조회 실패 (Not Found): id={job_posting_id}") # 결과 없을 때 경고 로그
         return None
 
     # 3. 로그인 사용자라면 즐겨찾기 상태 첨부
     await _attach_favorite_status(job_posting, user_id, repository)
 
     # 4. 결과 반환
+    logger.info(f"채용 공고 상세 조회 완료: id={job_posting_id}") # 성공 로그 추가
     return job_posting
 
 
@@ -138,11 +143,13 @@ async def update_job_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository),
 ) -> JobPosting | None:
     """채용 공고 업데이트 서비스"""
+    logger.info(f"채용 공고 업데이트 시작: id={job_posting_id}") # 시작 로그 추가
     # 1. 업데이트할 데이터 추출 (변경되지 않은 필드는 제외)
     update_data = data.model_dump(exclude_unset=True)
 
     # 2. 업데이트할 데이터가 없으면 기존 공고 정보 반환
     if not update_data:
+        logger.info(f"업데이트할 데이터 없음 - 기존 정보 반환: id={job_posting_id}") # 분기 로그
         job_posting = await repository.get_by_id(job_posting_id)
         if job_posting:
             # 업데이트가 없어도 즐겨찾기 상태는 None으로 초기화 (업데이트 응답이므로)
@@ -155,14 +162,16 @@ async def update_job_posting(
 
         # 4. 업데이트 대상이 없으면 None 반환 (라우터에서 404 처리 가능)
         if updated_posting is None:
+            logger.warning(f"채용 공고 업데이트 대상 없음 (Not Found): id={job_posting_id}") # 결과 없을 때 경고 로그
             return None
 
         # 5. 업데이트된 공고에 기본 즐겨찾기 상태 설정 (None)
         updated_posting.is_favorited = None
+        logger.info(f"채용 공고 업데이트 완료: id={updated_posting.id}") # 성공 로그 추가
         return updated_posting
     except Exception as e:
         # 6. 오류 처리
-        logger.exception(f"Error updating job posting {job_posting_id}") # 예외 정보와 함께 에러 로그 기록
+        logger.exception(f"채용 공고 업데이트 오류: id={job_posting_id}") # 기존 오류 로그에 컨텍스트 추가
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="채용 공고 업데이트 중 오류가 발생했습니다."
@@ -174,14 +183,19 @@ async def delete_job_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository),
 ) -> bool:
     """채용 공고 삭제 서비스. 성공 시 True, 실패(대상 없음 포함) 시 False 반환."""
+    logger.info(f"채용 공고 삭제 시작: id={job_posting_id}") # 시작 로그 추가
     try:
         # 1. 레포지토리를 통해 공고 삭제 시도
         success = await repository.delete(job_posting_id)
         # 2. 삭제 성공 여부 반환 (repository.delete 결과)
+        if success:
+            logger.info(f"채용 공고 삭제 완료: id={job_posting_id}") # 성공 로그
+        else:
+            logger.warning(f"채용 공고 삭제 실패 (대상 없음): id={job_posting_id}") # 대상 없을 때 경고 로그
         return success
     except Exception as e:
         # 3. 오류 처리
-        logger.exception(f"Error deleting job posting {job_posting_id}") # 예외 정보와 함께 에러 로그 기록
+        logger.exception(f"채용 공고 삭제 오류: id={job_posting_id}") # 기존 오류 로그에 컨텍스트 추가
         # 삭제 실패 시 False 반환 (라우터에서 500 처리)
         return False
 
@@ -189,7 +203,8 @@ async def delete_job_posting(
 async def search_job_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository),
     keyword: str | None = None,
-    location: str | None = None,
+    location1: str | None = None,
+    location2: str | None = None,
     job_category: JobCategoryEnum | None = None,
     employment_type: str | None = None,
     is_always_recruiting: bool | None = None,
@@ -199,6 +214,7 @@ async def search_job_postings(
     user_id: Optional[int] = None
 ) -> tuple[List[JobPosting], int]:
     """채용 공고 검색 (필터링, 정렬, 페이지네이션, 로그인 시 즐겨찾기 여부 포함)"""
+    logger.info(f"채용 공고 검색 시작: keyword='{keyword}', location1='{location1}', location2='{location2}', category='{job_category}', page={page}, limit={limit}, sort='{sort}', user_id={user_id}")
     # 1. 검색 필터 조건 생성
     filters = []
     if keyword:
@@ -208,8 +224,10 @@ async def search_job_postings(
             JobPosting.description.ilike(f"%{keyword}%") |
             JobPosting.summary.ilike(f"%{keyword}%")
         )
-    if location:
-        filters.append(JobPosting.work_address.ilike(f"%{location}%"))
+    if location1:
+        filters.append(JobPosting.region1.ilike(f"%{location1}%"))
+    if location2:
+        filters.append(JobPosting.region2.ilike(f"%{location2}%"))
     if job_category:
         filters.append(JobPosting.job_category == job_category.value)
     if employment_type:
@@ -229,6 +247,7 @@ async def search_job_postings(
 
     # 3. 필터링된 전체 공고 수 조회
     total_count = await repository.count_search(filters=filters)
+    logger.info(f"검색 조건에 맞는 공고 수: {total_count}") # 중간 결과 로그
 
     # 4. 검색 결과가 없으면 빈 목록 반환
     if total_count == 0:
@@ -247,6 +266,7 @@ async def search_job_postings(
     await _attach_favorite_status(postings, user_id, repository)
 
     # 7. 결과 반환
+    logger.info(f"채용 공고 검색 완료: {len(postings)}개 반환 (총 {total_count}개)") # 완료 로그
     return postings, total_count
 
 
@@ -256,6 +276,7 @@ async def get_popular_job_postings(
     user_id: Optional[int] = None
 ) -> tuple[List[JobPosting], int]:
     """인기 채용 공고 목록 조회 (지원자 수 기준, 로그인 시 즐겨찾기 여부 포함)"""
+    logger.info(f"인기 채용 공고 조회 시작: limit={limit}, user_id={user_id}") # 시작 로그
     # 1. 레포지토리 통해 인기 공고 목록 조회 (지원자 수 기준 정렬됨)
     postings = await repository.list_popular(limit=limit)
 
@@ -264,6 +285,7 @@ async def get_popular_job_postings(
 
     # 3. 조회된 공고 수 계산 및 결과 반환
     total_count = len(postings) # 인기 공고는 별도 count 없이 조회된 개수가 전체
+    logger.info(f"인기 채용 공고 {total_count}개 조회 완료") # 성공 로그
     return postings, total_count
 
 
@@ -276,14 +298,17 @@ async def get_popular_job_postings_for_user_age_group(
     로그인한 사용자의 나이대에 맞는 인기 채용 공고 목록 조회.
     사용자 생년월일 정보 필요.
     """
+    logger.info(f"사용자 연령대 기반 인기 공고 조회 시작: user_id={user.id}, limit={limit}") # 시작 로그
     # 1. 사용자 정보 및 생년월일 유효성 검사
     if not user or not user.birthday:
+        logger.warning(f"사용자 생년월일 정보 없음: user_id={user.id}") # 경고 로그
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="생년월일 정보가 없습니다. 마이페이지에서 생년월일을 등록해주세요.")
     try:
         # 생년월일 파싱 (앞 10자리 YYYY-MM-DD 형식 가정)
         birth = user.birthday[:10]
         birth_date = datetime.strptime(birth, "%Y-%m-%d").date()
     except (ValueError, TypeError):
+        logger.error(f"사용자 생년월일 형식 오류: user_id={user.id}, birthday='{user.birthday}'") # 오류 로그
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="생년월일 형식이 올바르지 않습니다. (예: 1965-05-10)")
 
     # 2. 사용자 나이 및 연령대 계산
@@ -291,6 +316,7 @@ async def get_popular_job_postings_for_user_age_group(
     age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
     age_start = (age // 10) * 10 # 10대, 20대, 30대... 시작 나이
     age_end = age_start + 10 # 10대 (10~19), 20대 (20~29)... 끝 나이
+    logger.info(f"사용자 연령대 계산 완료: user_id={user.id}, age={age}, age_group={age_start}s") # 정보 로그
 
     # 3. 레포지토리 통해 해당 연령대 인기 공고 목록 조회
     postings = await repository.list_popular_by_age_group(
@@ -304,4 +330,5 @@ async def get_popular_job_postings_for_user_age_group(
 
     # 5. 조회된 공고 수 계산 및 결과 반환
     total_count = len(postings) # 인기 공고는 별도 count 없이 조회된 개수가 전체
+    logger.info(f"사용자 연령대 기반 인기 공고 {total_count}개 조회 완료") # 성공 로그
     return postings, total_count
