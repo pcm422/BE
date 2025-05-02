@@ -23,9 +23,8 @@ app = FastAPI(title="My FastAPI Project", version="0.1.0")
 
 @app.on_event("startup")
 async def startup_event():
-    if os.getpid() == 1:
-        print("스케줄러 실행")
-        start_scheduler()
+    print("스케줄러 실행")
+    start_scheduler()
 
 # Add CORS middleware
 origins = [
