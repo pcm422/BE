@@ -203,7 +203,8 @@ async def delete_job_posting(
 async def search_job_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository),
     keyword: str | None = None,
-    location: str | None = None,
+    location1: str | None = None,
+    location2: str | None = None,
     job_category: JobCategoryEnum | None = None,
     employment_type: str | None = None,
     is_always_recruiting: bool | None = None,
@@ -213,7 +214,7 @@ async def search_job_postings(
     user_id: Optional[int] = None
 ) -> tuple[List[JobPosting], int]:
     """채용 공고 검색 (필터링, 정렬, 페이지네이션, 로그인 시 즐겨찾기 여부 포함)"""
-    logger.info(f"채용 공고 검색 시작: keyword='{keyword}', location='{location}', category='{job_category}', page={page}, limit={limit}, sort='{sort}', user_id={user_id}") # 시작 로그 (파라미터 포함)
+    logger.info(f"채용 공고 검색 시작: keyword='{keyword}', location1='{location1}', location2='{location2}', category='{job_category}', page={page}, limit={limit}, sort='{sort}', user_id={user_id}")
     # 1. 검색 필터 조건 생성
     filters = []
     if keyword:
@@ -223,8 +224,10 @@ async def search_job_postings(
             JobPosting.description.ilike(f"%{keyword}%") |
             JobPosting.summary.ilike(f"%{keyword}%")
         )
-    if location:
-        filters.append(JobPosting.work_address.ilike(f"%{location}%"))
+    if location1:
+        filters.append(JobPosting.region1.ilike(f"%{location1}%"))
+    if location2:
+        filters.append(JobPosting.region2.ilike(f"%{location2}%"))
     if job_category:
         filters.append(JobPosting.job_category == job_category.value)
     if employment_type:
@@ -248,7 +251,6 @@ async def search_job_postings(
 
     # 4. 검색 결과가 없으면 빈 목록 반환
     if total_count == 0:
-        logger.info("검색 결과 없음 - 빈 목록 반환") # 결과 없을 때 로그
         return [], 0
 
     # 5. 페이지네이션 적용하여 공고 검색
@@ -264,7 +266,7 @@ async def search_job_postings(
     await _attach_favorite_status(postings, user_id, repository)
 
     # 7. 결과 반환
-    logger.info(f"채용 공고 {len(postings)}개 검색 완료 (전체: {total_count})") # 성공 로그
+    logger.info(f"채용 공고 검색 완료: {len(postings)}개 반환 (총 {total_count}개)") # 완료 로그
     return postings, total_count
 
 

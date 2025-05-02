@@ -199,7 +199,8 @@ async def list_postings(
 )
 async def search_postings(
     keyword: str | None = Query(None, description="검색 키워드 (제목, 내용, 요약)"),
-    location: str | None = Query(None, description="근무지 위치 (주소 일부)"),
+    location1: str | None = Query(None, description="근무지 지역(시/도)"),
+    location2: str | None = Query(None, description="근무지 지역(구/군)"),
     job_category: JobCategoryEnum | None = Query(None, description="직무 카테고리"),
     employment_type: str | None = Query(None, description="고용 형태"),
     is_always_recruiting: bool | None = Query(None, description="상시 채용 여부"),
@@ -210,14 +211,15 @@ async def search_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> PaginatedJobPostingResponse:
     """채용공고 검색 API (필터링, 정렬, 페이지네이션)"""
-    logger.info(f"GET /posting/search 요청 수신: keyword={keyword}, location={location}, job_category={job_category}, employment_type={employment_type}, is_always_recruiting={is_always_recruiting}, page={page}, limit={limit}, sort={sort}, user_id={current_user.id if current_user else None}")
+    logger.info(f"GET /posting/search 요청 수신: keyword={keyword}, location1={location1}, location2={location2}, job_category={job_category}, employment_type={employment_type}, is_always_recruiting={is_always_recruiting}, page={page}, limit={limit}, sort={sort}, user_id={current_user.id if current_user else None}")
     # 1. 현재 로그인 사용자 ID 추출 (없으면 None)
     user_id = current_user.id if current_user else None
     # 2. 서비스 호출하여 검색 조건에 맞는 공고 목록 및 전체 개수 조회
     postings, total_count = await service.search_job_postings(
         repository=repository,
         keyword=keyword,
-        location=location,
+        location1=location1,
+        location2=location2,
         job_category=job_category,
         employment_type=employment_type,
         is_always_recruiting=is_always_recruiting,
