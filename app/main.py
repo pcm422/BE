@@ -21,11 +21,6 @@ from app.domains.job_applications.router import router as applications_router
 # FastAPI 애플리케이션 인스턴스 생성 (프로젝트 제목 및 버전 설정)
 app = FastAPI(title="My FastAPI Project", version="0.1.0")
 
-@app.on_event("startup")
-async def startup_event():
-    print("스케줄러 실행")
-    start_scheduler()
-
 # Add CORS middleware
 origins = [
     "http://localhost:5173",

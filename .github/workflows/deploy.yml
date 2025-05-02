@@ -63,11 +63,10 @@ jobs:
             # 서버에서 Docker Hub 로그인 (이미지 pull 목적)
             echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
 
-            # (선택사항) 서버 소스 코드 업데이트 (git pull)
-            # git pull origin main
+            # 서버 소스 코드 업데이트
+            git pull origin main
 
             # Docker Compose로 최신 'app' 이미지 pull (프로덕션 설정 사용)
-            # ('app' 서비스는 FastAPI 앱으로 추정)
             docker compose -f docker-compose.prod.yml pull app
 
             # Docker Compose로 서비스 재시작 (app, nginx, certbot)
@@ -78,7 +77,7 @@ jobs:
             # 'app' 컨테이너 내에서 마이그레이션 명령어 실행
             docker compose -f docker-compose.prod.yml run --rm app poetry run alembic upgrade head
 
-            # (선택사항) 불필요한 Docker 리소스 정리 (공간 확보)
+            # 불필요한 Docker 리소스 정리 (공간 확보)
             docker image prune -f
             docker container prune -f
             docker volume prune -f
