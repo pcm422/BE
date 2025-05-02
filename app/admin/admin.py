@@ -143,6 +143,8 @@ class JobPostingAdmin(BaseAdmin, model=JobPosting):
         "summary",
         "company.company_name",
         "author.email",
+        "region1",
+        "region2",
         "job_category",
         "work_duration",
         "is_work_duration_negotiable",
@@ -154,7 +156,7 @@ class JobPostingAdmin(BaseAdmin, model=JobPosting):
         "is_work_time_negotiable",
         "created_at",
     ]
-    column_searchable_list = ["title", "company.company_name", "author.email", "job_category"]
+    column_searchable_list = ["title", "company.company_name", "author.email", "region1", "region2", "job_category"]
     column_selectinload_list = [JobPosting.author, JobPosting.company]
     name = "공고"
     name_plural = "공고 목록"
@@ -172,8 +174,10 @@ class JobPostingAdmin(BaseAdmin, model=JobPosting):
         "benefits": "복리 후생",
         "preferred_conditions": "우대 조건",
         "other_conditions": "기타 조건",
-        "work_address": "근무지",
+        "work_address": "근무지 (상세)",
         "work_place_name": "근무지명",
+        "region1": "지역(시/도)",
+        "region2": "지역(구/군)",
         "payment_method": "급여 지급 방법",
         "job_category": "직종",
         "work_duration": "근무 기간",
