@@ -1,6 +1,6 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from app.tasks.user_clean import delete_unverified_users
+from app.core.tasks import delete_unverified_users
 
 def start_scheduler():
     scheduler = AsyncIOScheduler()

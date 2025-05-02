@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -21,7 +22,8 @@ app = FastAPI(title="My FastAPI Project", version="0.1.0")
 
 @app.on_event("startup")
 async def startup_event():
-    start_scheduler()
+    if os.getenv("RUN_MAIN") == "true":
+        start_scheduler()
 
 # Add CORS middleware
 origins = [
