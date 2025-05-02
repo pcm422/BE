@@ -7,9 +7,8 @@ LOG_DIR = "logs"
 LOG_FILE = "app.log"
 LOG_PATH = os.path.join(LOG_DIR, LOG_FILE)
 
-# 로그 디렉토리가 없다면 생성
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+# 로그 디렉토리 생성 (이미 존재해도 오류 발생 안 함)
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # 로깅 포맷 설정
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
