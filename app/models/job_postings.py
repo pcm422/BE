@@ -80,6 +80,8 @@ class JobPosting(Base):
 
     work_address = Column(String(255), nullable=False)
     work_place_name = Column(String(25), nullable=False)
+    region1 = Column(String(50), nullable=True)
+    region2 = Column(String(50), nullable=True)
 
     payment_method = Column(
         SQLAlchemyEnum(PaymentMethodEnum, name="payment_method_enum"), nullable=False

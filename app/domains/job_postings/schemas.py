@@ -106,6 +106,8 @@ class JobPostingBase(BaseModel):
     other_conditions: Optional[str] = Field(None, description="기타 조건")
     work_address: Optional[str] = Field(None, description="근무지 주소")
     work_place_name: Optional[str] = Field(None, description="근무지명")
+    region1: Optional[str] = Field(None, max_length=50, description="지역(시/도)")
+    region2: Optional[str] = Field(None, max_length=50, description="지역(구/군)")
     payment_method: Optional[PaymentMethodEnum] = Field(None, description="급여 지급 방식")
     job_category: Optional[JobCategoryEnum] = Field(None, description="직종 카테고리")
     work_duration: Optional[WorkDurationEnum] = Field(None, description="근무 기간")
@@ -154,6 +156,8 @@ class JobPostingCreate(JobPostingBase):
     recruit_number: int = Field(..., description="모집 인원 (0은 '인원 미정')")
     work_address: str = Field(..., description="근무지 주소")
     work_place_name: str = Field(..., description="근무지명")
+    region1: Optional[str] = Field(None, max_length=50, description="지역(시/도) (선택)")
+    region2: Optional[str] = Field(None, max_length=50, description="지역(구/군) (선택)")
     payment_method: PaymentMethodEnum = Field(..., description="급여 지급 방식")
     job_category: JobCategoryEnum = Field(..., description="직종 카테고리")
     work_duration: Optional[WorkDurationEnum] = Field(None, description="근무 기간")
@@ -280,6 +284,8 @@ class JobPostingCreateFormData:
         other_conditions: Optional[str] = Form(None, description="기타 조건"),
         work_address: Optional[str] = Form(None, description="근무지 주소"),
         work_place_name: Optional[str] = Form(None, description="근무지명"),
+        region1: Optional[str] = Form(None, description="지역(시/도)"),
+        region2: Optional[str] = Form(None, description="지역(구/군)"),
         payment_method: Optional[str] = Form(None, description=f"급여 지급 방식 (가능한 값: {', '.join([e.name for e in PaymentMethodEnum])} 또는 {', '.join([e.value for e in PaymentMethodEnum])})"),
         job_category: Optional[str] = Form(None, description=f"직종 카테고리 (가능한 값: {', '.join([e.name for e in JobCategoryEnum])} 또는 {', '.join([e.value for e in JobCategoryEnum])})"),
         work_duration: Optional[str] = Form(None, description=f"근무 기간 (가능한 값: {', '.join([e.name for e in WorkDurationEnum])} 또는 {', '.join([e.value for e in WorkDurationEnum])})"),
@@ -310,6 +316,8 @@ class JobPostingCreateFormData:
         self.other_conditions = other_conditions
         self.work_address = work_address
         self.work_place_name = work_place_name
+        self.region1 = region1
+        self.region2 = region2
         self.payment_method = payment_method
         self.job_category = job_category
         self.work_duration = work_duration
