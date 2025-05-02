@@ -42,8 +42,8 @@ services:
       - NCP_REGION=${NCP_REGION}
     depends_on:
       - db
-    # command: supervisord -n -c /etc/supervisor/conf.d/supervisord.conf # 이전 명령어 또는 uvicorn 명령어 주석 처리
-    command: gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 app.main:app --preload --reload # gunicorn에 --reload 옵션 추가 및 워커 수 1로 변경
+    # command: supervisord -n -c /etc/supervisor/conf.d/supervisord.conf # 이전 명령어 
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload # uvicorn 직접 실행 및 리로드 옵션 사용
     # healthcheck 추가 고려 (DB 준비될 때까지 대기)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h db"]
