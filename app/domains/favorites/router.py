@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
 from app.domains.users.router import read_current_user
 from app.models import User  # User 모델 import
-
+from sqlalchemy.future import select
+from app.models import JobPosting
 from app.domains.favorites.schemas import FavoriteCreate, FavoriteRead
 from app.domains.favorites.service import create_favorite, delete_favorite, list_favorites
 
@@ -23,20 +24,25 @@ async def add_favorite(
     db: AsyncSession = Depends(get_db_session),  # 비동기 DB 세션 의존성
 ):
     new_fav = await create_favorite(db, current_user, fav.job_posting_id)
-    from sqlalchemy.future import select
-
-    from app.models import JobPosting
 
     job_result = await db.execute(
         select(JobPosting).where(JobPosting.id == new_fav.job_posting_id)
     )
     job = job_result.scalar_one_or_none()
-    title = job.title if job else ""
+
+    if not job:
+        raise HTTPException(status_code=404, detail="채용공고를 찾을 수 없습니다.")
+
     return FavoriteRead(
-        id=new_fav.id,
-        job_posting_id=new_fav.job_posting_id,
-        created_at=new_fav.created_at,
-        title=title,
+        id=new_fav.id,  # 즐겨찾기 ID
+        job_posting_id=new_fav.job_posting_id,  # 채용공고 ID
+        created_at=new_fav.created_at,  # 생성 시각
+        title=job.title,  # 제목
+        work_place_name=job.work_place_name,  # 근무지명
+        recruit_period_end=job.recruit_period_end,  # 마감일
+        work_address=job.work_address,  # 근무지 주소
+        is_favorited=True,  # 방금 등록했으므로 True
+        is_always_recruiting=job.is_always_recruiting,  # 상시모집 여부
     )
 
 

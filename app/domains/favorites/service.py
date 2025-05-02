@@ -10,7 +10,7 @@ from app.models import Favorite, JobPosting, User
 async def create_favorite(
     db: AsyncSession, current_user: User, job_posting_id: int
 ) -> Favorite:
-    # 1. 동일 채용공고가 이미 즐겨찾기에 추가되어 있는지 확인합니다.
+    # 동일 채용공고가 이미 즐겨찾기에 추가되어 있는지 확인
     query = select(Favorite).where(
         Favorite.user_id == current_user.id, Favorite.job_posting_id == job_posting_id
     )
@@ -21,7 +21,7 @@ async def create_favorite(
             status_code=status.HTTP_409_CONFLICT,
             detail="이미 즐겨찾기에 추가된 채용공고입니다.",
         )
-    # 2. 채용공고가 실제로 존재하는지 확인합니다.
+    # 채용공고가 실제로 존재하는지 확인
     job_query = select(JobPosting).where(JobPosting.id == job_posting_id)
     job_result = await db.execute(job_query)
     job = job_result.scalar_one_or_none()
@@ -29,7 +29,7 @@ async def create_favorite(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="채용공고를 찾을 수 없습니다."
         )
-    # 3. 즐겨찾기 레코드 생성
+    # 즐겨찾기 레코드 생성
     new_fav = Favorite(
         user_id=current_user.id,
         job_posting_id=job_posting_id,
