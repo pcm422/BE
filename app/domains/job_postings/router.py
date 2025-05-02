@@ -80,6 +80,7 @@ async def create_job_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository) # 서비스 호출 시 필요
 ) -> JobPosting:
     """채용공고 생성 API"""
+    logger.info("POST /posting 요청 수신")
     # 1. 이미지 업로드 (선택적)
     postings_image_url = None
     if image_file:
@@ -173,6 +174,7 @@ async def list_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> PaginatedJobPostingResponse:
     """채용공고 목록 조회 API (페이지네이션)"""
+    logger.info(f"GET /posting 요청 수신: skip={skip}, limit={limit}, user_id={current_user.id if current_user else None}")
     # 1. 현재 로그인 사용자 ID 추출 (없으면 None)
     user_id = current_user.id if current_user else None
     # 2. 서비스 호출하여 공고 목록 및 전체 개수 조회
@@ -208,6 +210,7 @@ async def search_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> PaginatedJobPostingResponse:
     """채용공고 검색 API (필터링, 정렬, 페이지네이션)"""
+    logger.info(f"GET /posting/search 요청 수신: keyword={keyword}, location={location}, job_category={job_category}, employment_type={employment_type}, is_always_recruiting={is_always_recruiting}, page={page}, limit={limit}, sort={sort}, user_id={current_user.id if current_user else None}")
     # 1. 현재 로그인 사용자 ID 추출 (없으면 None)
     user_id = current_user.id if current_user else None
     # 2. 서비스 호출하여 검색 조건에 맞는 공고 목록 및 전체 개수 조회
@@ -244,6 +247,7 @@ async def list_popular_postings(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> PaginatedJobPostingResponse:
     """인기 채용공고 목록 조회 API (지원자 수 기준)"""
+    logger.info(f"GET /posting/popular 요청 수신: limit={limit}, user_id={current_user.id if current_user else None}")
     # 1. 현재 로그인 사용자 ID 추출 (없으면 None)
     user_id = current_user.id if current_user else None
     # 2. 서비스 호출하여 인기 공고 목록 및 개수 조회
@@ -272,6 +276,7 @@ async def list_popular_postings_by_my_age(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> PaginatedJobPostingResponse:
     """사용자 연령대별 인기 채용공고 조회 API"""
+    logger.info(f"GET /posting/popular-by-my-age 요청 수신: limit={limit}, user_id={current_user.id if current_user else None}")
     # 1. 로그인 여부 확인 (이 API는 로그인 필수)
     if not current_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="로그인이 필요합니다.")
@@ -304,6 +309,7 @@ async def get_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> JobPosting:
     """채용공고 상세 조회 API"""
+    logger.info(f"GET /posting/{job_posting_id} 요청 수신: user_id={current_user.id if current_user else None}")
     # 1. 현재 로그인 사용자 ID 추출 (없으면 None)
     user_id = current_user.id if current_user else None
     # 2. 헬퍼 함수 사용하여 공고 조회 (없으면 404 발생)
@@ -325,6 +331,7 @@ async def update_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository) # 공고 조회 및 서비스 호출 시 필요
 ) -> JobPosting:
     """채용공고 수정 API"""
+    logger.info(f"PATCH /posting/{job_posting_id} 요청 수신")
     # 1. 공고 ID로 공고 조회 (레포지토리 직접 사용, 없으면 404)
     posting = await repository.get_by_id(job_posting_id)
     if not posting:
@@ -356,6 +363,7 @@ async def delete_posting(
     repository: JobPostingRepository = Depends(get_job_posting_repository) # 공고 조회 및 서비스 호출 시 필요
 ) -> None:
     """채용공고 삭제 API"""
+    logger.info(f"DELETE /posting/{job_posting_id} 요청 수신")
     # 1. 공고 ID로 공고 조회 (레포지토리 직접 사용, 없으면 404)
     posting = await repository.get_by_id(job_posting_id)
     if not posting:
