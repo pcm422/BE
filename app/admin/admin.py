@@ -7,7 +7,7 @@ from app.models.interests import Interest
 from app.models.job_applications import JobApplication
 from app.models.resumes import Resume
 from app.models.resumes_educations import ResumeEducation
-from app.models.users import User
+from app.models.users import User, EmailVerification
 from app.models.job_postings import JobPosting
 from app.models.favorites import Favorite
 from app.models.admin_users import AdminUser
@@ -419,6 +419,23 @@ class UserInterestAdmin(BaseAdmin, model=UserInterest):
         "interest": "관심분야"
     }
 
+# EmailVerification 모델을 위한 Admin View 추가
+class EmailVerificationAdmin(BaseAdmin, model=EmailVerification):
+    column_list = ["id", "email", "token", "is_verified", "expires_at", "user_type"]
+    column_searchable_list = ["email", "token", "user_type"]
+    name = "이메일 인증"
+    name_plural = "이메일 인증 목록"
+    column_labels = {
+        "id": "번호",
+        "email": "이메일",
+        "token": "인증 토큰",
+        "is_verified": "인증 여부",
+        "expires_at": "만료일 (KST)",
+        "user_type": "사용자 유형"
+    }
+    column_formatters = {
+        "expires_at": format_datetime_kst,
+    }
 
 def setup_admin(app: FastAPI):
     admin = Admin(
@@ -439,3 +456,4 @@ def setup_admin(app: FastAPI):
     admin.add_view(ResumeAdmin)
     admin.add_view(ResumeEducationAdmin)
     admin.add_view(ResumeExperienceAdmin)
+    admin.add_view(EmailVerificationAdmin)
