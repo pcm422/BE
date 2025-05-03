@@ -33,6 +33,14 @@ async def register_user(
     if not verified:
         raise HTTPException(status_code=400, detail="이메일 인증이 완료되지 않았습니다.")
 
+    # 동일한 이메일이 이미 존재하는지 확인
+    result = await db.execute(
+        select(User).filter(User.email == user_data.email)
+    )
+    existing_user = result.scalar_one_or_none()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="이미 가입된 이메일입니다.")
+
     # User 생성
     new_user = User(
         name=user_data.name,  # 이름 할당
