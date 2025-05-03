@@ -1,15 +1,17 @@
 import os
+from datetime import datetime
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
 from app.domains.users.service import (  # UserRegister 스키마 임포트
     create_access_token, create_refresh_token, get_user_by_email)
+from app.models.users import EmailVerification
 
 router = APIRouter(prefix="/auth", tags=["Oauth2"])
-
 
 # 카카오 로그인
 @router.get("/kakao/login", response_model=dict)
@@ -32,7 +34,7 @@ async def auth_kakao_login(
             "KAKAO_SECRET"
         ),  # KAKAO_SECRET 키 사용 (환경변수 이름에 따라 수정)
         "redirect_uri": os.getenv(
-            "KAKAO_REDIRECT_URI", "http://localhost:5173/auth/kakao/login"
+            "KAKAO_REDIRECT_URI", "http://localhost:8000/auth/kakao/login"
         ),
         "code": code,
     }
@@ -72,6 +74,33 @@ async def auth_kakao_login(
 
     # 사용자가 없으면 추가 정보 입력이 필요한 단계로 넘김
     if not user:
+        # 기존 인증 데이터 확인
+        result = await db.execute(
+            select(EmailVerification)
+            .where(EmailVerification.email == email)
+            .order_by(EmailVerification.id.desc())  # 가장 최근 레코드 우선
+            .limit(1)
+        )
+        verification = result.scalar_one_or_none()
+
+        if not verification:
+            # 없다면 새로 생성
+            verification = EmailVerification(
+                email=email,
+                token=access_token,  # 임시로 access_token 저장
+                is_verified=True,
+                expires_at=datetime.now(),  # 만료 시간은 현재 시간으로 설정
+                user_type="user",  # 또는 "company"로 설정할 수 있음
+            )
+            db.add(verification)
+        else:
+            # 있다면 상태 업데이트
+            verification.is_verified = True
+            verification.token = access_token
+            verification.expires_at = datetime.now()
+
+        await db.commit()
+
         return {
             "status": "need_register",
             "message": "카카오 계정으로 로그인은 성공했지만 추가 정보 입력이 필요합니다.",
@@ -155,6 +184,31 @@ async def auth_naver_login(
     user = user_result if not isinstance(user_result, dict) else None
 
     if not user:
+
+        # 기존 인증 데이터 확인
+        result = await db.execute(
+            select(EmailVerification).where(EmailVerification.email == email)
+        )
+        verification = result.scalar_one_or_none()
+
+        if not verification:
+            # 없다면 새로 생성
+            verification = EmailVerification(
+                email=email,
+                token=access_token,  # 임시로 access_token 저장
+                is_verified=True,
+                expires_at=datetime.now(),  # 만료 시간은 현재 시간으로 설정
+                user_type="user",  # 또는 "company"로 설정할 수 있음
+            )
+            db.add(verification)
+        else:
+            # 있다면 상태 업데이트
+            verification.is_verified = True
+            verification.token = access_token
+            verification.expires_at = datetime.now()
+
+        await db.commit()
+
         return {
             "status": "need_register",
             "message": "네이버 계정으로 로그인은 성공했지만 추가 정보 입력이 필요합니다.",
