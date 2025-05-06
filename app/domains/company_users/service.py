@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import jwt
 from fastapi import HTTPException, status, BackgroundTasks
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -24,6 +24,7 @@ from app.domains.company_users.utiles import (
     verify_password,
 )
 from app.models import CompanyInfo, CompanyUser
+from app.models.job_postings import JobPosting
 from app.models.users import EmailVerification
 
 
@@ -214,6 +215,20 @@ async def update_company_user(
 # 기업 회원 탈퇴
 async def delete_company_user(db: AsyncSession, current_user: CompanyUser):
     company_info = current_user.company
+    
+    company_id_to_check = None
+    if company_info:
+        company_id_to_check = company_info.id
+
+    # JobPosting 먼저 삭제
+    await db.execute(
+        delete(JobPosting).where(JobPosting.author_id == current_user.id)
+    )
+    if company_id_to_check:
+        await db.execute(
+            delete(JobPosting).where(JobPosting.company_id == company_id_to_check)
+        )
+        
     await db.delete(current_user)
     if company_info:
         await db.delete(company_info)  # 기업 정보도 삭제
@@ -221,7 +236,7 @@ async def delete_company_user(db: AsyncSession, current_user: CompanyUser):
 
     deleted_company_user = {
         "company_user_id": current_user.id,
-        "company_name": company_info.company_name,
+        "company_name": company_info.company_name if company_info else "N/A",
     }
     return deleted_company_user
 
