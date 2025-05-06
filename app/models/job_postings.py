@@ -63,8 +63,8 @@ class JobPosting(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String(50), nullable=False)
 
-    author_id = Column(Integer, ForeignKey("company_users.id", ondelete='CASCADE'))  # 담당자
-    company_id = Column(Integer, ForeignKey("company_info.id", ondelete='CASCADE'))  # 회사
+    author_id = Column(Integer, ForeignKey("company_users.id", ondelete='CASCADE'), nullable=False)  # 담당자
+    company_id = Column(Integer, ForeignKey("company_info.id", ondelete='CASCADE'), nullable=False)  # 회사
 
     recruit_period_start = Column(Date, nullable=True)
     recruit_period_end = Column(Date, nullable=True)
