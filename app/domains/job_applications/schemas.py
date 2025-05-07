@@ -7,13 +7,13 @@ from app.models.job_applications import ApplicationStatusEnum
 
 class JobPostingSummary(BaseModel):
     """간략한 채용공고 정보"""
+    job_posting_id: int = Field(..., alias="id")
     title: str
     company_id: int
     recruit_period_start: datetime
     recruit_period_end: datetime
     work_address: str
     work_place_name: str
-
 class ResumeApplyCreate(BaseModel):
     """사용자가 이력서를 채용공고에 지원할 때 사용하는 입력"""
     job_posting_id: int = Field(..., description="지원할 채용공고 ID")

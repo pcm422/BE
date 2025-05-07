@@ -18,6 +18,28 @@ from app.models.users import EmailVerification
 
 load_dotenv()
 
+async def check_email_is_verified(email: str, user_type: str, db: AsyncSession) -> EmailVerification:
+    """
+    이메일과 사용자 유형(user/company)을 기준으로 인증 여부를 확인합니다.
+    동일 이메일에 여러 user_type이 있는 경우를 안전하게 처리하기 위함입니다.
+    """
+    # DB에서 이메일 + user_type 조건으로 인증 여부 확인
+    result = await db.execute(
+        select(EmailVerification).where(
+            and_(
+                EmailVerification.email == email,
+                EmailVerification.user_type == user_type,
+                EmailVerification.is_verified == True
+            )
+        )
+    )
+    verification = result.scalar_one_or_none()
+
+    if verification is None:
+        raise HTTPException(status_code=404, detail="해당 이메일은 인증되지 않았습니다.")
+
+    return verification
+
 async def register_user(
     db: AsyncSession, user_data: UserRegister
 ) -> dict:

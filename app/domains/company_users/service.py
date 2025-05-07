@@ -65,6 +65,7 @@ async def create_company_user(
         password=hash_password(payload.password),
         company_id=company_id,
     )
+    company_user.is_active = True  # 이메일 인증을 통과한 경우 활성화 설정
     db.add(company_user)
     await db.commit()
     await db.refresh(company_user)
