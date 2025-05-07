@@ -72,7 +72,7 @@ async def check_email_verified(
     }
 
 # 이메일 인증 요청
-@router.post("/auth/verification", tags=["사용자"])
+@router.post("/auth/verification", tags=["인증"])
 async def request_email_verification(
     background_tasks : BackgroundTasks,
     email: str = Query(..., description="이메일 인증을 요청할 주소"),
@@ -211,7 +211,7 @@ async def delete(
 
 
 # 리프레쉬 토큰을 통한 액세스 토큰 재발급
-@router.post("/auth/refresh-token", tags=["Auth"])
+@router.post("/auth/refresh-token", tags=["인증"])
 async def refresh_token(token_data: TokenRefreshRequest, db=Depends(get_db_session)):
     """
     리프레쉬 토큰을 사용하여 새로운 액세스 토큰을 발급하는 엔드포인트입니다.
