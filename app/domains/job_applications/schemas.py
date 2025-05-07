@@ -7,7 +7,7 @@ from app.models.job_applications import ApplicationStatusEnum
 
 class JobPostingSummary(BaseModel):
     """간략한 채용공고 정보"""
-    job_posting_id: int = Field(..., alias="id")
+    id : int
     title: str
     company_id: int
     recruit_period_start: datetime

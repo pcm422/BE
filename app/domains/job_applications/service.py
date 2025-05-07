@@ -120,6 +120,7 @@ async def get_user_applications(
                 "user_id": application.user_id,
                 "job_posting_id": application.job_posting_id,
                 "job_posting": {
+                    "id": posting.id,
                     "title": posting.title,
                     "company_id": posting.company_id,
                     "recruit_period_start": posting.recruit_period_start,
