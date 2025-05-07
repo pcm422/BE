@@ -33,8 +33,43 @@ from .service import (
     verify_user_reset_password,
 )
 from app.core.email_utils.mail_service import verify_user_email, handle_verification_email
+from ...models.users import EmailVerification
 
 router = APIRouter()
+
+# 이메일 인증 여부 확인
+@router.get("/auth/check-verification", tags=["인증"])
+async def check_email_verified(
+    email: str = Query(..., description="확인할 이메일 주소"),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    주어진 이메일의 인증 여부를 확인하는 API 엔드포인트입니다.
+    인증된 이메일이면 인증 정보 반환, 아니면 404 오류 반환.
+    """
+    # 이메일 인증 여부 확인 쿼리 실행
+    result = await db.execute(
+        select(EmailVerification).where(
+            EmailVerification.email == email,
+            EmailVerification.is_verified == True
+        )
+    )
+    verification = result.scalar_one_or_none()
+
+    if verification is None:
+        # 인증 정보가 없거나 인증되지 않은 경우 예외 발생
+        raise HTTPException(status_code=404, detail="해당 이메일은 인증되지 않았습니다.")
+
+    return {
+        "status": "success",
+        "message": "이메일 인증이 완료된 상태입니다.",
+        "data": {
+            "email": verification.email,
+            "user_type": verification.user_type,
+            "expires_at": verification.expires_at.isoformat(),
+            "is_verified": verification.is_verified,
+        },
+    }
 
 # 이메일 인증 요청
 @router.post("/auth/verification", tags=["사용자"])
