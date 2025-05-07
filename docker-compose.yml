@@ -32,6 +32,8 @@ services:
       - SITE_URL=${SITE_URL}
       - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+      - CLOVA_API_KEY=${CLOVA_API_KEY}
+      - CLOVA_API_URL=${CLOVA_API_URL}
       # 개발에 필요한 다른 환경 변수들 추가
       - ENVIRONMENT=local
       - BRN_API_KEY=${BRN_API_KEY}

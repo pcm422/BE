@@ -1,4 +1,4 @@
-from app.core.clova_utils import call_clova
+from app.core.clova_utils import call_clova_summary
 from app.domains.ai.schemas import AIJobPostSchema
 
 
@@ -35,10 +35,13 @@ async def summary_jobposting(job: AIJobPostSchema) -> str:
     #  시스템 메세지
     system_msg =(
         "당신은 인사(HR)전문 어시스던트 입니다."
-        "아래 공고 본문을 정확하게 파악하여 최대 50자 이내의 한두 문장을 자연스러운 한국어 높임말로 요약하세요."
-        "반드시 포함할 정보는 직무명, 고용형태, 급여, 근무지,근무날짜, 근무시간 입니다."
-        "핵심 보조 정보는 우대조건, 학력요구사항, 복리후생 입니다."
-        "추가 설명은 일절하지 않고, 오직 요약문만 출력합니다."
+        "아래 공고 본문을 정확하게 파악하여 최대 50자 이내의 한두줄로 요약하세요." 
+        "반드시 포함할 정보는 직무명, 고용형태, 급여, 근무지, 근무날짜, 근무시간 입니다." 
+        "핵심 보조 정보는 우대조건, 학력요구사항, 복리후생 입니다." 
+        "명확하고 정확하게 높임말의 문장 형태로 출력하세요." 
+        "이모티콘, 추가 설명 일절 금지"
+        "예시 : 백엔드 엔지니어를 정규직으로 모집하며 서울 송파구 쿠팡본사에서 근무합니다."
+        "연봉 7500만원, 월-금 09시부터 18시 근무이며, 협의불가능합니다."
     )
     # 유저 메세지
     user_msg = f"공고내용 :\n{content}"
@@ -50,4 +53,4 @@ async def summary_jobposting(job: AIJobPostSchema) -> str:
     ]
 
     # 호출하기
-    return await call_clova(messages)
+    return await call_clova_summary(messages)
