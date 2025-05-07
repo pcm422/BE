@@ -5,6 +5,8 @@ CLOVA_API_URL = os.getenv("CLOVA_API_URL")
 CLOVA_API_KEY = os.getenv("CLOVA_API_KEY")
 
 async def call_clova(messages: list[dict]) -> str:
+    if not CLOVA_API_URL or not CLOVA_API_KEY:
+        raise RuntimeError(f"API 키가 올바르지 않습니다.")
     headers = {
         "Authorization": f"Bearer {CLOVA_API_KEY}",
         "Content-Type": "application/json",

@@ -50,5 +50,4 @@ async def summary_jobposting(job: AIJobPostSchema) -> str:
     ]
 
     # 호출하기
-    response = await call_clova(messages)
-    return response
+    return await call_clova(messages)

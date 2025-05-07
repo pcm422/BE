@@ -23,5 +23,8 @@ class AIJobPostSchema(BaseModel):
     preferred_conditions: Optional[str]
     description: Optional[str]
 
+    class Config:
+        extra = "ignore"
+
 class SummarizeResponse(BaseModel):
     summary: str
