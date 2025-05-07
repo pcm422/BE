@@ -31,3 +31,7 @@ if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
 
 # 이메일 인증/비밀번호 재설정 링크에서 사용할 사이트 URL
 SITE_URL = os.getenv("SITE_URL", "http://localhost:5173")
+
+# 클로바 API
+CLOVA_API_URL = os.getenv("CLOVA_API_URL")
+CLOVA_API_KEY = os.getenv("CLOVA_API_KEY")
