@@ -67,6 +67,12 @@ async def request_email_verification(
     이메일 인증을 요청하는 엔드포인트입니다.
     이메일 중복 여부를 확인하고 인증 메일을 전송합니다.
     """
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if user:
+        raise HTTPException(status_code=400, detail="이미 가입된 이메일입니다.")
+
     # 기존에 발송되었지만 아직 인증되지 않은 EmailVerification 레코드 삭제
     await db.execute(
         delete(EmailVerification).where(
@@ -74,12 +80,6 @@ async def request_email_verification(
             EmailVerification.user_type == "user",
         )
     )
-
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-
-    if user:
-        raise HTTPException(status_code=400, detail="이미 가입된 이메일입니다.")
 
     await handle_verification_email(background_tasks, email, db, user_type="user")
     return {"status": "success", "message": "인증 이메일이 전송되었습니다."}
