@@ -68,3 +68,39 @@ def test_ai_summarize_output_format():
     for ch in ["[", "]", "/", "\"", "'"]:
         assert ch not in summary
 
+# 사용자가 직접 입력하는 구조가 아닌,
+# 저장된 공고 데이터를 기반으로 가져오는거라 생략함
+# 필수 필드만 있을 때도 동작 하는지 확인 ->불필요
+# def test_ai_summarize_minimum_required_fields():
+#     minimal_data = {
+#         "title": "알바생 모집",
+#         "job_category": "서비스직",
+#         "education": "무관",
+#         "employment_type": "계약직",
+#         "payment_method": "시급",
+#         "salary": 10000,
+#         "is_work_duration_negotiable": False,
+#         "is_work_days_negotiable": False,
+#         "is_work_time_negotiable": False,
+#         "career": "무관",
+#         "work_place_name": "GS25",
+#         "work_address": "서울시 마포구"
+#     }
+#     response = client.post("/ai/summarize", json=minimal_data)
+#     assert response.status_code == 200
+#     assert "summary" in response.json()["data"]
+
+from unittest.mock import patch,AsyncMock
+
+@patch("app.domains.ai.service.call_clova_summary", new_callable=AsyncMock)
+def test_ai_summarize_clova_empty_response(mock_clova):
+    mock_clova.return_value = ""
+
+    response = client.post("/ai/summarize", json=valid_job_data)
+
+    print("🔥 Mock was called:", mock_clova.called)  # ← mock 작동 확인용
+    print("🔥 Mock returned:", mock_clova.return_value)
+    print("🔥 Response JSON:", response.json())
+
+    assert response.status_code == 502
+    assert "요약 결과가 비어 있습니다" in response.json()["detail"]
