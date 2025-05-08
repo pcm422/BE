@@ -54,14 +54,6 @@ async def request_companyuser_email_verification(
     email: str = Query(..., description="인증할 기업 이메일"),
     db: AsyncSession = Depends(get_db_session),
 ):
-    # 기존에 발송되었지만 아직 인증되지 않은 EmailVerification 레코드 삭제
-    await db.execute(
-        delete(EmailVerification).where(
-            EmailVerification.email == email,
-            EmailVerification.user_type == "company",
-        )
-    )
-
     from app.models import CompanyUser
     result = await db.execute(select(CompanyUser).where(CompanyUser.email == email))
     user = result.scalar_one_or_none()
@@ -69,6 +61,14 @@ async def request_companyuser_email_verification(
     if user:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="이미 가입된 이메일입니다.")
+
+    # 기존에 발송되었지만 아직 인증되지 않은 EmailVerification 레코드 삭제
+    await db.execute(
+        delete(EmailVerification).where(
+            EmailVerification.email == email,
+            EmailVerification.user_type == "company",
+        )
+    )
 
     await handle_verification_email(background_tasks, email, db, user_type="company")
 
