@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status, BackgroundTasks, Query
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete as sql_alchemy_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
@@ -64,7 +64,7 @@ async def request_companyuser_email_verification(
 
     # 기존에 발송되었지만 아직 인증되지 않은 EmailVerification 레코드 삭제
     await db.execute(
-        delete(EmailVerification).where(
+        sql_alchemy_delete(EmailVerification).where(
             EmailVerification.email == email,
             EmailVerification.user_type == "company",
         )
