@@ -1,11 +1,11 @@
 import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, BackgroundTasks, Query
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.db import get_db_session
-from app.models import User, UserInterest
+from app.models import User, UserInterest, EmailVerification
 
 from app.domains.users.schemas import (
     TokenRefreshRequest,
@@ -67,6 +67,14 @@ async def request_email_verification(
     이메일 인증을 요청하는 엔드포인트입니다.
     이메일 중복 여부를 확인하고 인증 메일을 전송합니다.
     """
+    # 기존에 발송되었지만 아직 인증되지 않은 EmailVerification 레코드 삭제
+    await db.execute(
+        delete(EmailVerification).where(
+            EmailVerification.email == email,
+            EmailVerification.user_type == "user",
+        )
+    )
+
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
