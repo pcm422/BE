@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status, BackgroundTasks, Query
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db_session
@@ -37,7 +37,7 @@ from app.domains.company_users.service import (
     update_company_user,
 )
 from app.domains.company_users.utiles import success_response
-from app.models import CompanyUser
+from app.models import CompanyUser, EmailVerification
 
 router = APIRouter(prefix="/company", tags=["기업 회원"])  # URL 앞 부분
 
@@ -54,6 +54,14 @@ async def request_companyuser_email_verification(
     email: str = Query(..., description="인증할 기업 이메일"),
     db: AsyncSession = Depends(get_db_session),
 ):
+    # 기존에 발송되었지만 아직 인증되지 않은 EmailVerification 레코드 삭제
+    await db.execute(
+        delete(EmailVerification).where(
+            EmailVerification.email == email,
+            EmailVerification.user_type == "company",
+        )
+    )
+
     from app.models import CompanyUser
     result = await db.execute(select(CompanyUser).where(CompanyUser.email == email))
     user = result.scalar_one_or_none()
