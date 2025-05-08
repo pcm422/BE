@@ -1,6 +1,6 @@
 import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, BackgroundTasks, Query
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete as sql_alchemy_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -75,7 +75,7 @@ async def request_email_verification(
 
     # 기존에 발송되었지만 아직 인증되지 않은 EmailVerification 레코드 삭제
     await db.execute(
-        delete(EmailVerification).where(
+        sql_alchemy_delete(EmailVerification).where(
             EmailVerification.email == email,
             EmailVerification.user_type == "user",
         )
