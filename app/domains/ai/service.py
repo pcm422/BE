@@ -1,6 +1,6 @@
 from app.core.clova_utils import call_clova_summary
 from app.domains.ai.schemas import AIJobPostSchema
-
+from fastapi import HTTPException ,status
 
 def format_job_for_summary(job: AIJobPostSchema) -> str:
     parts = [f"제목: {job.title}"]
@@ -30,9 +30,8 @@ def format_job_for_summary(job: AIJobPostSchema) -> str:
         parts.append(f"설명: {job.description}")
     return "\n".join(parts)
 
-async def summary_jobposting(job: AIJobPostSchema) -> str:
-    content = format_job_for_summary(job)
-    print(content)
+
+def build_summary_messages(content:str) -> list[dict]:
     system_msg = (
         "당신은 인사(HR) 전문 어시스턴트입니다. "
         "아래 공고 정보를 보고, 자연스럽고 공식적인 한국어 문장으로 최대 50자 이내의 한두 문장으로 요약하세요. "
@@ -47,14 +46,21 @@ async def summary_jobposting(job: AIJobPostSchema) -> str:
         "예시1: 쿠팡 본사에서 파이썬 백엔드 엔지니어를 정규직 연봉 7,500만 원에 모집하며 서울 송파구에서 근무합니다. "
         "예시2: 삼성전자에서 데이터 엔지니어를 계약직 연봉 6,000만 원으로 채용하며 경기도 수원시에서 근무합니다."
     )
-    # 유저 메세지
     user_msg = f"공고내용 :\n{content}"
 
-    # payload 구성
-    messages =[
+    return [
         {"role":"system", "content":system_msg},
         {"role":"user", "content":user_msg},
     ]
+async def summary_jobposting(job: AIJobPostSchema) -> str:
+    content = format_job_for_summary(job)
+    messages = build_summary_messages(content)
+    summary = await call_clova_summary(messages)
 
-    # 호출하기
-    return await call_clova_summary(messages)
+    if not summary.split():
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            detail="요약 결과가 비어 있습니다. 다시 시도해주세요."
+        )
+
+    return summary
