@@ -8,7 +8,7 @@ from app.core.config import (
     EMAIL_HOST, EMAIL_PORT, EMAIL_USE_SSL,
     EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL
 )
-from app.models import Resume
+from app.models import Resume, User
 
 # 템플릿 로더: 프로젝트 루트 기준으로 app/templates 디렉터리 사용
 jinja_env = Environment(
@@ -45,8 +45,12 @@ async def send_email(
     )
 
 
-def build_resume_snapshot(resume: Resume) -> dict:
+def build_resume_snapshot(resume: Resume, applicant: User) -> dict:
     return {
+        "applicant_name": applicant.name,
+        "applicant_gender": applicant.gender,
+        "applicant_email": applicant.email,
+        "applicant_phone_number": applicant.phone_number,
         "resume_image": resume.resume_image,
         "desired_area": resume.desired_area,
         "introduction": resume.introduction,

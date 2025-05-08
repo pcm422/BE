@@ -46,7 +46,13 @@ async def create_application(
         if existing_app.scalar_one_or_none():  # 이미 지원한 경우
             raise HTTPException(status.HTTP_409_CONFLICT, "이미 지원한 공고입니다.")
 
-        snapshot = build_resume_snapshot(resume)  # 이력서 스냅샷 생성
+        applicant = await session.get(User, user_id)  # 지원자 정보 조회 
+        if not applicant:
+            # 이 경우는 발생하기 어렵지만, 방어적으로 처리
+            logger.error(f"지원자 정보를 찾을 수 없습니다: user_id={user_id}")
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "지원자 정보를 찾을 수 없습니다.")
+
+        snapshot = build_resume_snapshot(resume, applicant)  # 수정된 함수 호출: applicant 전달
 
         new_app = JobApplication(
             user_id=user_id,  # 사용자 ID
@@ -68,7 +74,7 @@ async def create_application(
 
         logger.info("이메일 발송 시작")  # 이메일 전송 로그
         author = await session.get(CompanyUser, job.author_id)  # 기업 사용자 정보 조회
-        applicant = await session.get(User, user_id)  # 지원자 정보 조회
+        # applicant = await session.get(User, user_id)  # 지원자 정보 조회 (위에서 이미 조회했으므로 중복 제거)
 
         if author and author.company:  # 회사 정보가 있으면
             email = author.company.manager_email  # 담당자 이메일 가져오기
