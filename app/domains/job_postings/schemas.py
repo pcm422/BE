@@ -301,7 +301,6 @@ class JobPostingCreateFormData:
         is_work_time_negotiable: str = Form("False", description="근무 시간 협의 가능 여부 ('True'/'False')"),
         description: Optional[str] = Form(None, description="상세 설명"),
         summary: Optional[str] = Form(None, description="채용 공고 요약글"),
-        postings_image: Optional[str] = Form(None, description="공고 이미지 URL (선택)"),
         latitude: Optional[str] = Form(None, description="근무지 위도 (숫자)"),
         longitude: Optional[str] = Form(None, description="근무지 경도 (숫자)"),
     ):
@@ -334,7 +333,6 @@ class JobPostingCreateFormData:
         self.is_work_time_negotiable_str = is_work_time_negotiable # bool 파싱용
         self.description = description
         self.summary = summary
-        self.postings_image = postings_image
         self.latitude = latitude
         self.longitude = longitude
 
