@@ -425,14 +425,17 @@ async def find_my_email_user_info(db: AsyncSession, name: str, phone_number:str,
             )
         )
     )
-    user = result.scalar_one_or_none() #결과
+    users = result.scalars().all()
 
     # 사용자 존재 여부 확인
-    if not user:
+    if not users:
         raise HTTPException(status_code=404, detail="일치하는 사용자를 찾을수 없습니다.")
 
     # 이메일 반환
     return {
         "status": "success",
-        "data": {"email":user.email}
+        "data": [
+            {"email":user.email}
+        for user in users
+    ]
     }
