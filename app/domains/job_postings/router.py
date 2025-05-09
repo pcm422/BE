@@ -12,6 +12,7 @@ from app.domains.job_postings.schemas import (
                                                 PaginatedJobPostingResponse,
                                                 JobPostingCreateFormData,
                                                 JobPostingCreate,
+                                                JobPostingUpdateFormData,
                                                 _parse_date, _parse_int, _parse_enum, _parse_float, _parse_bool,
                                                 EducationEnum, PaymentMethodEnum, JobCategoryEnum, WorkDurationEnum,
                                                 SortOptions
@@ -75,7 +76,7 @@ async def check_posting_permission(
 )
 async def create_job_posting(
     form_data: JobPostingCreateFormData = Depends(), # Form 데이터 수신
-    image_file: UploadFile = File(None, description="채용공고 이미지 파일 (선택사항)"),
+    postings_image: UploadFile = File(None, description="채용공고 이미지 파일 (선택사항)"),
     current_user: CompanyUser = Depends(get_current_company_user), # 현재 로그인한 기업 사용자
     repository: JobPostingRepository = Depends(get_job_posting_repository) # 서비스 호출 시 필요
 ) -> JobPosting:
@@ -83,10 +84,10 @@ async def create_job_posting(
     logger.info("POST /posting 요청 수신")
     # 1. 이미지 업로드 (선택적)
     postings_image_url = None
-    if image_file:
+    if postings_image:
         try:
             # NCP Object Storage에 이미지 업로드 시도
-            postings_image_url = await upload_image_to_ncp(image_file, folder="job_postings")
+            postings_image_url = await upload_image_to_ncp(postings_image, folder="job_postings")
         except Exception as e:
             # 이미지 업로드 실패 시 500 에러
             logger.exception("Error uploading image") # 예외 정보와 함께 에러 로그 기록
@@ -324,32 +325,88 @@ async def get_posting(
     "/{job_posting_id}",
     response_model=JobPostingResponse,
     summary="채용공고 수정",
-    description="로그인된 기업 담당자가 자신이 올린 채용공고를 수정합니다.",
+    description="로그인된 기업 담당자가 자신이 올린 채용공고를 수정합니다. 이미지 파일을 함께 업로드할 수 있습니다.",
 )
 async def update_posting(
     job_posting_id: int,
-    data: JobPostingUpdate, # 수정할 데이터 (Pydantic 모델로 검증됨)
-    current_user: CompanyUser = Depends(get_current_company_user), # 현재 로그인한 기업 사용자
-    repository: JobPostingRepository = Depends(get_job_posting_repository) # 공고 조회 및 서비스 호출 시 필요
+    form_data: JobPostingUpdateFormData = Depends(),
+    postings_image: Optional[UploadFile] = File(None, description="채용공고 이미지 파일 (교체 시 업로드, 선택사항)"),
+    current_user: CompanyUser = Depends(get_current_company_user),
+    repository: JobPostingRepository = Depends(get_job_posting_repository)
 ) -> JobPosting:
     """채용공고 수정 API"""
     logger.info(f"PATCH /posting/{job_posting_id} 요청 수신")
-    # 1. 공고 ID로 공고 조회 (레포지토리 직접 사용, 없으면 404)
-    posting = await repository.get_by_id(job_posting_id)
-    if not posting:
+    db_posting = await repository.get_by_id(job_posting_id)
+    if not db_posting:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="채용공고를 찾을 수 없습니다.")
 
-    # 2. 수정 권한 확인 (헬퍼 함수 사용, 없으면 403)
-    await check_posting_permission(posting, current_user, action_type="수정")
+    await check_posting_permission(db_posting, current_user, action_type="수정")
 
-    # 3. 서비스 호출하여 공고 업데이트
+    parsed_update_data = {}
+    # form_data의 각 필드를 파싱하여 parsed_update_data에 채움 (제공된 경우에만)
+    if form_data.title is not None: parsed_update_data["title"] = form_data.title
+    if form_data.recruit_period_start is not None: parsed_update_data["recruit_period_start"] = _parse_date(form_data.recruit_period_start, "모집 시작일")
+    if form_data.recruit_period_end is not None: parsed_update_data["recruit_period_end"] = _parse_date(form_data.recruit_period_end, "모집 종료일")
+    if form_data.is_always_recruiting_str is not None: parsed_update_data["is_always_recruiting"] = _parse_bool(form_data.is_always_recruiting_str, "상시 모집 여부")
+    if form_data.education is not None: parsed_update_data["education"] = _parse_enum(EducationEnum, form_data.education, "요구 학력")
+    if form_data.recruit_number is not None: parsed_update_data["recruit_number"] = _parse_int(form_data.recruit_number, "모집 인원", min_value=0)
+    if form_data.benefits is not None: parsed_update_data["benefits"] = form_data.benefits
+    if form_data.preferred_conditions is not None: parsed_update_data["preferred_conditions"] = form_data.preferred_conditions
+    if form_data.other_conditions is not None: parsed_update_data["other_conditions"] = form_data.other_conditions
+    if form_data.work_address is not None: parsed_update_data["work_address"] = form_data.work_address
+    if form_data.work_place_name is not None: parsed_update_data["work_place_name"] = form_data.work_place_name
+    if form_data.region1 is not None: parsed_update_data["region1"] = form_data.region1
+    if form_data.region2 is not None: parsed_update_data["region2"] = form_data.region2
+    if form_data.payment_method is not None: parsed_update_data["payment_method"] = _parse_enum(PaymentMethodEnum, form_data.payment_method, "급여 지급 방식")
+    if form_data.job_category is not None: parsed_update_data["job_category"] = _parse_enum(JobCategoryEnum, form_data.job_category, "직종 카테고리")
+    if form_data.work_duration is not None: parsed_update_data["work_duration"] = _parse_enum(WorkDurationEnum, form_data.work_duration, "근무 기간")
+    if form_data.is_work_duration_negotiable_str is not None: parsed_update_data["is_work_duration_negotiable"] = _parse_bool(form_data.is_work_duration_negotiable_str, "근무 기간 협의 가능 여부")
+    if form_data.career is not None: parsed_update_data["career"] = form_data.career
+    if form_data.employment_type is not None: parsed_update_data["employment_type"] = form_data.employment_type
+    if form_data.salary is not None: parsed_update_data["salary"] = _parse_int(form_data.salary, "급여", min_value=0)
+    if form_data.work_days is not None: parsed_update_data["work_days"] = form_data.work_days
+    if form_data.is_work_days_negotiable_str is not None: parsed_update_data["is_work_days_negotiable"] = _parse_bool(form_data.is_work_days_negotiable_str, "근무 요일 협의 가능 여부")
+    if form_data.is_schedule_based_str is not None: parsed_update_data["is_schedule_based"] = _parse_bool(form_data.is_schedule_based_str, "일정에 따른 근무 여부")
+    if form_data.work_start_time is not None: parsed_update_data["work_start_time"] = form_data.work_start_time # 형식 검증은 JobPostingUpdate 모델에서
+    if form_data.work_end_time is not None: parsed_update_data["work_end_time"] = form_data.work_end_time # 형식 검증은 JobPostingUpdate 모델에서
+    if form_data.is_work_time_negotiable_str is not None: parsed_update_data["is_work_time_negotiable"] = _parse_bool(form_data.is_work_time_negotiable_str, "근무 시간 협의 가능 여부")
+    if form_data.description is not None: parsed_update_data["description"] = form_data.description
+    if form_data.summary is not None: parsed_update_data["summary"] = form_data.summary
+    if form_data.latitude is not None: parsed_update_data["latitude"] = _parse_float(form_data.latitude, "위도")
+    if form_data.longitude is not None: parsed_update_data["longitude"] = _parse_float(form_data.longitude, "경도")
+
+    # 이미지 처리 로직
+    final_image_url = db_posting.postings_image # 기본값은 기존 이미지 URL
+    if postings_image: # 새 파일이 업로드된 경우
+        try:
+            # 참고: 이전 이미지 파일 삭제 로직은 서비스 계층에서 필요시 처리
+            final_image_url = await upload_image_to_ncp(postings_image, folder="job_postings")
+        except Exception as e:
+            logger.exception("Error uploading new image during job posting update")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"채용공고 이미지 업로드 중 오류 발생: {e}")
+    elif form_data.postings_image_url_str is not None: # 새 파일 없고, URL 문자열이 제공된 경우
+        if form_data.postings_image_url_str == "": # 빈 문자열이면 이미지 삭제 의도
+            final_image_url = None
+        else:
+            final_image_url = form_data.postings_image_url_str
+    # new_postings_image_file도 없고, postings_image_url_str도 제공되지 않으면 기존 이미지(final_image_url) 유지
+    
+    parsed_update_data["postings_image"] = final_image_url
+
+    try:
+        # JobPostingUpdate 모델을 사용하여 최종 유효성 검사 및 데이터 준비
+        # 여기서 **parsed_update_data 언패킹 시 None 값도 전달되어 모델의 Optional 필드에 반영됨
+        job_posting_update_model = JobPostingUpdate(**parsed_update_data) 
+    except (ValueError, ValidationError) as e:
+        detail = str(e) if isinstance(e, ValueError) else e.errors()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+
     updated_posting = await service.update_job_posting(
         job_posting_id=job_posting_id,
-        data=data, # Pydantic 모델로 검증된 수정 데이터
+        data=job_posting_update_model, # Pydantic 모델로 변환된 데이터 전달
         repository=repository
     )
     
-    # 4. 업데이트된 공고 정보 반환
     return updated_posting
 
 

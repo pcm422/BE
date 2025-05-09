@@ -127,7 +127,7 @@ class JobPostingBase(BaseModel):
     latitude: Optional[float] = Field(None, description="근무지 위도")
     longitude: Optional[float] = Field(None, description="근무지 경도")
 
-    model_config = ConfigDict(from_attributes=True) # ORM 객체와 호환
+    model_config = ConfigDict(from_attributes=True)
 
     @field_validator('work_start_time', 'work_end_time')
     @classmethod
@@ -301,6 +301,7 @@ class JobPostingCreateFormData:
         is_work_time_negotiable: str = Form("False", description="근무 시간 협의 가능 여부 ('True'/'False')"),
         description: Optional[str] = Form(None, description="상세 설명"),
         summary: Optional[str] = Form(None, description="채용 공고 요약글"),
+        postings_image: Optional[str] = Form(None, description="공고 이미지 URL (선택)"),
         latitude: Optional[str] = Form(None, description="근무지 위도 (숫자)"),
         longitude: Optional[str] = Form(None, description="근무지 경도 (숫자)"),
     ):
@@ -333,6 +334,79 @@ class JobPostingCreateFormData:
         self.is_work_time_negotiable_str = is_work_time_negotiable # bool 파싱용
         self.description = description
         self.summary = summary
+        self.postings_image = postings_image
+        self.latitude = latitude
+        self.longitude = longitude
+
+
+class JobPostingUpdateFormData:
+    """
+    채용 공고 수정 시 Form 데이터 수신용 클래스 (Depends 의존성).
+    라우터에서 파싱 및 검증 수행. 모든 필드는 선택적.
+    """
+    def __init__(
+        self,
+        title: Optional[str] = Form(None, description="채용공고 제목"),
+        recruit_period_start: Optional[str] = Form(None, description="모집 시작일 (YYYY-MM-DD)"),
+        recruit_period_end: Optional[str] = Form(None, description="모집 종료일 (YYYY-MM-DD)"),
+        is_always_recruiting_str: Optional[str] = Form(None, description="상시 모집 여부 ('True'/'False')"),
+        education: Optional[str] = Form(None, description=f"요구 학력 (가능한 값: {', '.join([e.name for e in EducationEnum])} 또는 {', '.join([e.value for e in EducationEnum])})"),
+        recruit_number: Optional[str] = Form(None, description="모집 인원 (숫자, 0은 '인원 미정')"),
+        benefits: Optional[str] = Form(None, description="복리 후생"),
+        preferred_conditions: Optional[str] = Form(None, description="우대 조건"),
+        other_conditions: Optional[str] = Form(None, description="기타 조건"),
+        work_address: Optional[str] = Form(None, description="근무지 주소"),
+        work_place_name: Optional[str] = Form(None, description="근무지명"),
+        region1: Optional[str] = Form(None, description="지역(시/도)"),
+        region2: Optional[str] = Form(None, description="지역(구/군)"),
+        payment_method: Optional[str] = Form(None, description=f"급여 지급 방식 (가능한 값: {', '.join([e.name for e in PaymentMethodEnum])} 또는 {', '.join([e.value for e in PaymentMethodEnum])})"),
+        job_category: Optional[str] = Form(None, description=f"직종 카테고리 (가능한 값: {', '.join([e.name for e in JobCategoryEnum])} 또는 {', '.join([e.value for e in JobCategoryEnum])})"),
+        work_duration: Optional[str] = Form(None, description=f"근무 기간 (가능한 값: {', '.join([e.name for e in WorkDurationEnum])} 또는 {', '.join([e.value for e in WorkDurationEnum])})"),
+        is_work_duration_negotiable_str: Optional[str] = Form(None, description="근무 기간 협의 가능 여부 ('True'/'False')"),
+        career: Optional[str] = Form(None, description="경력 요구사항"),
+        employment_type: Optional[str] = Form(None, description="고용 형태"),
+        salary: Optional[str] = Form(None, description="급여 (숫자)"),
+        work_days: Optional[str] = Form(None, description="근무 요일/스케줄"),
+        is_work_days_negotiable_str: Optional[str] = Form(None, description="근무 요일 협의 가능 여부 ('True'/'False')"),
+        is_schedule_based_str: Optional[str] = Form(None, description="일정에 따른 근무 여부 ('True'/'False')"),
+        work_start_time: Optional[str] = Form(None, description="근무 시작 시간 (HH:MM)"),
+        work_end_time: Optional[str] = Form(None, description="근무 종료 시간 (HH:MM)"),
+        is_work_time_negotiable: str = Form("False", description="근무 시간 협의 가능 여부 ('True'/'False')"),
+        description: Optional[str] = Form(None, description="상세 설명"),
+        summary: Optional[str] = Form(None, description="채용 공고 요약글"),
+        postings_image_url_str: Optional[str] = Form(None, description="공고 이미지 URL (파일 미업로드 시 사용, 비우면 이미지 없음)"), # 이미지 URL 직접 제공용
+        latitude: Optional[str] = Form(None, description="근무지 위도 (숫자)"),
+        longitude: Optional[str] = Form(None, description="근무지 경도 (숫자)"),
+    ):
+        self.title = title
+        self.recruit_period_start = recruit_period_start
+        self.recruit_period_end = recruit_period_end
+        self.is_always_recruiting_str = is_always_recruiting_str
+        self.education = education
+        self.recruit_number = recruit_number
+        self.benefits = benefits
+        self.preferred_conditions = preferred_conditions
+        self.other_conditions = other_conditions
+        self.work_address = work_address
+        self.work_place_name = work_place_name
+        self.region1 = region1
+        self.region2 = region2
+        self.payment_method = payment_method
+        self.job_category = job_category
+        self.work_duration = work_duration
+        self.is_work_duration_negotiable_str = is_work_duration_negotiable_str
+        self.career = career
+        self.employment_type = employment_type
+        self.salary = salary
+        self.work_days = work_days
+        self.is_work_days_negotiable_str = is_work_days_negotiable_str
+        self.is_schedule_based_str = is_schedule_based_str
+        self.work_start_time = work_start_time
+        self.work_end_time = work_end_time
+        self.is_work_time_negotiable_str = is_work_time_negotiable # bool 파싱용
+        self.description = description
+        self.summary = summary
+        self.postings_image_url_str = postings_image_url_str # 이미지 URL 직접 제공용
         self.latitude = latitude
         self.longitude = longitude
 
