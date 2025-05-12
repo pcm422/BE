@@ -1,7 +1,7 @@
 import jwt
 from dotenv import load_dotenv
 from fastapi import HTTPException
-from sqlalchemy import and_
+from sqlalchemy import and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -271,6 +271,15 @@ async def delete_user(db: AsyncSession, user_id: int, current_user: User) -> dic
     user = result.scalar_one_or_none()  # 사용자 객체 반환
     if not user:
         raise HTTPException(status_code=404, detail="유저가 조회되지 않습니다.")
+    # 사용자 이메일 인증 기록 삭제 (user_type='user'만 해당)
+    await db.execute(
+        delete(EmailVerification).where(
+            and_(
+                EmailVerification.email == user.email,
+                EmailVerification.user_type == "user"
+            )
+        )
+    )  # 회원탈퇴 시 해당 이메일의 인증 기록도 삭제
     await db.delete(user)  # 사용자 삭제 요청
     await db.commit()  # 삭제 커밋
     return {
