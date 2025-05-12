@@ -109,7 +109,7 @@ class BaseAdmin(ModelView):
             return result.scalar_one_or_none()
 
 class UserAdmin(PasswordHashMixin, SuperuserAccessMixin, BaseAdmin, model=User):
-    column_list = ["id", "name", "email", "phone_number", "is_active", "created_at", "updated_at"]
+    column_list = ["id", "name", "email", "phone_number", "gender", "is_active", "created_at", "updated_at"]
     column_searchable_list = ["name", "email", "phone_number"]
     column_selectinload_list = [User.favorites, User.applications, User.user_interests]
     name = "회원"
