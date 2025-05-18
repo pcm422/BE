@@ -32,12 +32,15 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro # 읽기 전용 마운트
-      - static_volume:/app/static:ro # 앱 컨테이너와 공유 (읽기 전용)
-      - media_volume:/app/media:ro # 앱 컨테이너와 공유 (읽기 전용)
-      - certbot_conf:/etc/letsencrypt # Certbot 설정 공유
-      - ./certbot/www:/var/www/certbot # Certbot ACME challenge 공유
-      - ./certbot/conf/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem:ro
+      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_volume:/app/static:ro
+      - media_volume:/app/media:ro
+      - certbot_conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - type: bind
+        source: ./certbot/conf/ssl-dhparams.pem
+        target: /etc/letsencrypt/ssl-dhparams.pem
+        read_only: true
     depends_on:
       - app # 앱이 실행된 후 Nginx가 프록시하도록 (선택적)
     restart: unless-stopped
