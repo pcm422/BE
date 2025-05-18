@@ -13,35 +13,10 @@ services:
       - ./tests:/app/tests # 테스트 디렉토리 마운트
     ports:
       - "8000:8000" # 호스트 8000번 포트를 컨테이너 8000번 포트에 연결
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=${DATABASE_URL_LOCAL} # 호스트의 .env 파일에서 읽어옴
-      - SECRET_KEY=${SECRET_KEY}
-      - ALGORITHM=${ALGORITHM}
-      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
-      - REFRESH_TOKEN_EXPIRE_MINUTES=${REFRESH_TOKEN_EXPIRE_MINUTES}
-      - NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
-      - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}
-      - NAVER_REDIRECT_URL=${NAVER_REDIRECT_URL}
-      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
-      - KAKAO_SECRET=${KAKAO_SECRET}
-      - KAKAO_REDIRECT_URI=${KAKAO_REDIRECT_URI}
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_USE_SSL=${EMAIL_USE_SSL}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
-      - SITE_URL=${SITE_URL}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
-      - CLOVA_API_KEY=${CLOVA_API_KEY}
-      - CLOVA_API_URL=${CLOVA_API_URL}
-      # 개발에 필요한 다른 환경 변수들 추가
       - ENVIRONMENT=local
-      - BRN_API_KEY=${BRN_API_KEY}
-      - NCP_ACCESS_KEY=${NCP_ACCESS_KEY}
-      - NCP_SECRET_KEY=${NCP_SECRET_KEY}
-      - NCP_BUCKET_NAME=${NCP_BUCKET_NAME}
-      - NCP_ENDPOINT=${NCP_ENDPOINT}
-      - NCP_REGION=${NCP_REGION}
     depends_on:
       - db
     # command: supervisord -n -c /etc/supervisor/conf.d/supervisord.conf # 이전 명령어 
@@ -60,10 +35,8 @@ services:
       - postgres_data:/var/lib/postgresql/data # 데이터 영구 저장을 위한 볼륨
     ports:
       - "5432:5432" # 호스트 5432 포트를 컨테이너 5432 포트에 연결 (DB 툴 연결용)
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+    env_file:
+      - .env
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
