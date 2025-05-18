@@ -1,5 +1,6 @@
 import asyncio
 import os
+import ssl # ssl 모듈 임포트
 # --- 프로젝트 특정 설정 시작 ---
 # 프로젝트 루트 경로 추가 (app 모듈 임포트 위함)
 import sys
@@ -35,6 +36,8 @@ target_metadata = Base.metadata
 # 기타 alembic.ini 옵션 로드 예시 (필요시 사용)
 # my_important_option = config.get_main_option("my_important_option")
 
+def get_url():
+    return os.getenv("DATABASE_URL") # 환경 변수에서 DATABASE_URL 가져오기
 
 # 오프라인 마이그레이션 실행 함수 정의
 def run_migrations_offline() -> None:
@@ -75,16 +78,27 @@ async def run_migrations_online() -> None:
     실제 DB에 연결하여 마이그레이션 수행.
     비동기 엔진(AsyncEngine) 생성 및 컨텍스트 연결 필요.
     """
+    # SSL 컨텍스트 생성 (Neon은 일반적으로 시스템 기본 CA로 검증 가능)
+    # 좀 더 엄격하게 하려면 Neon의 CA 인증서를 직접 지정할 수도 있습니다.
+    ssl_context = ssl.create_default_context()
+    # 만약 특정 CA 파일이 필요하다면:
+    # ssl_context = ssl.create_default_context(cafile="/path/to/neon_ca.crt")
+    # 또는 SSL 검증을 덜 엄격하게 하려면 (권장하지 않음):
+    # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    # ssl_context.check_hostname = False
+    # ssl_context.verify_mode = ssl.CERT_NONE
+
     # alembic.ini 파일의 메인 섹션 설정 로드
     configuration = config.get_section(config.config_ini_section)
     # DB URL은 환경 변수 값으로 덮어쓰기
-    configuration["sqlalchemy.url"] = DATABASE_URL
+    configuration["sqlalchemy.url"] = get_url()
 
     # 비동기 SQLAlchemy 엔진 생성 (FastAPI/psycopg 사용 시 권장)
     connectable = create_async_engine(
         configuration["sqlalchemy.url"],  # DB URL 사용
         poolclass=pool.NullPool,  # Alembic 실행 시 NullPool 사용 권장
         future=True,  # SQLAlchemy 2.0 스타일 활성화
+        connect_args={"ssl": ssl_context} # SSL 컨텍스트 전달
     )
 
     # 비동기 엔진 연결 및 마이그레이션 실행
