@@ -37,10 +37,7 @@ services:
       - media_volume:/app/media:ro
       - certbot_conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-      - type: bind
-        source: ./certbot/conf/ssl-dhparams.pem
-        target: /etc/letsencrypt/ssl-dhparams.pem
-        read_only: true
+      - ./certbot/conf/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem:ro
     depends_on:
       - app # 앱이 실행된 후 Nginx가 프록시하도록 (선택적)
     restart: unless-stopped
